@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>YuraCRM Admin Пасажири v17</title>
+    <title>EscoExpress CRM Пасажири v18</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -1498,13 +1498,13 @@
 <header class="header">
     <div class="header-top">
         <button class="burger-btn" onclick="openSideMenu()">☰</button>
-        <div class="logo">YURA<span>TRANSPORTATION</span></div>
+        <div class="logo">ESCO<span>EXPRESS</span></div>
         <div class="search-box">
             <span class="search-icon">🔍</span>
             <input type="text" class="search-input" id="searchInput" placeholder="Пошук..." oninput="handleSearch()">
         </div>
         <div class="header-right">
-            <a href="https://messenger.smartsender.com/chats?project=yura-transportation-131349" target="_blank" class="header-chat-btn" title="SmartSender Чат">💬</a>
+            <a href="https://messenger.smartsender.com/chats?project=escoexpress" target="_blank" class="header-chat-btn" title="SmartSender Чат">💬</a>
             <span class="role-badge">👤 Адмін</span>
             <div class="user-avatar">Y</div>
         </div>
@@ -1927,13 +1927,37 @@
             <div class="form-row"><div class="form-group"><label>Дата виїзду</label><input type="date" id="fDate"></div><div class="form-group"><label>Місць</label><input type="number" id="fSeats" value="1" min="1"></div></div>
             <div class="form-group"><label>ПіБ</label><input type="text" id="fName"></div>
             <div class="form-row"><div class="form-group"><label>Телефон пасажира</label><input type="tel" id="fPhone"></div><div class="form-group"><label>Тел. реєстратора</label><input type="tel" id="fPhoneReg"></div></div>
-            <div class="form-group"><label>Адреса відправки</label><input type="text" id="fFrom"></div>
             <div class="form-group"><label>Адреса прибуття</label><input type="text" id="fTo"></div>
-            <div class="form-row"><div class="form-group"><label>Оплата €</label><input type="text" id="fPayment"></div><div class="form-group"><label>Відсоток %</label><input type="text" id="fPercent"></div></div>
-            <div class="form-row"><div class="form-group"><label>Авто</label><select id="fVehicle"><option value="">—</option></select></div><div class="form-group"><label>Відмітка</label><input type="text" id="fMark"></div></div>
-            <div class="form-row"><div class="form-group"><label>Диспечер</label><input type="text" id="fDispatcher"></div><div class="form-group"><label>Вага (кг)</label><input type="text" id="fWeight"></div></div>
-            <div class="form-row"><div class="form-group"><label>Таймінг</label><input type="text" id="fTiming"></div><div class="form-group"><label>Дата оформлення</label><input type="date" id="fDateReg"></div></div>
-            <div class="form-group"><label>Примітка</label><textarea id="fNote" rows="2"></textarea></div>
+            <div class="form-row"><div class="form-group"><label>Ціна квитка</label><input type="text" id="fPrice"></div><div class="form-group"><label>Завдаток</label><input type="text" id="fDeposit"></div></div>
+            <div class="form-row">
+                <div class="form-group"><label>Статус оплати</label>
+                    <select id="fPayStatus" style="background:var(--bg-main);">
+                        <option value="Не оплачено">Не оплачено</option>
+                        <option value="Частково">Частково</option>
+                        <option value="Оплачено">Оплачено</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Форма оплати</label>
+                    <select id="fPayForm" style="background:var(--bg-main);">
+                        <option value="">—</option>
+                        <option value="Готівка">Готівка</option>
+                        <option value="Карта">Карта</option>
+                        <option value="Переказ">Переказ</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Валюта</label>
+                    <select id="fCurrency" style="background:var(--bg-main);">
+                        <option value="UAH">UAH</option>
+                        <option value="EUR">EUR</option>
+                        <option value="CHF">CHF</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Авто</label><select id="fVehicle"><option value="">—</option></select></div>
+            </div>
+            <div class="form-row"><div class="form-group"><label>Місце в авто</label><input type="text" id="fSeatInCar" placeholder="A1-A7"></div><div class="form-group"><label>Таймінг</label><input type="text" id="fTiming"></div></div>
+            <div class="form-row"><div class="form-group"><label>Вага багажу (кг)</label><input type="text" id="fWeight"></div><div class="form-group"><label>Ціна багажу</label><input type="text" id="fWeightPrice"></div></div>
         </div>
         <div class="modal-footer"><button class="btn-cancel" onclick="closeModal('passengerModal')">Скасувати</button><button class="btn-save" onclick="savePassenger()">💾 Зберегти</button></div>
     </div>
@@ -2160,32 +2184,32 @@ function initMapsAPI() {
 <script>
 const ALL_COLUMNS = {
     name:{label:'ПіБ',group:'row1'},
-    phone:{label:'Телефон',group:'row1'},
+    phone:{label:'Телефон пасажира',group:'row1'},
     seats:{label:'Місць',group:'row1'},
-    id:{label:'ІД',group:'row1'},
-    from:{label:'Звідки',group:'row2'},
-    to:{label:'Куди',group:'row2'},
-    vehicle:{label:'Авто',group:'row2'},
+    id:{label:'PAX_ID',group:'row1'},
+    to:{label:'Адреса прибуття',group:'row2'},
+    vehicle:{label:'Номер авто',group:'row2'},
+    seatInCar:{label:'Місце в авто',group:'row2'},
     date:{label:'Дата виїзду',group:'meta'},
-    payment:{label:'Оплата',group:'meta'},
-    percent:{label:'Відсоток',group:'meta'},
-    mark:{label:'Відмітка',group:'details'},
-    dispatcher:{label:'Диспечер',group:'details'},
+    timing:{label:'Таймінг',group:'meta'},
+    price:{label:'Ціна квитка',group:'meta'},
+    deposit:{label:'Завдаток',group:'meta'},
+    payStatus:{label:'Статус оплати',group:'finance'},
+    payForm:{label:'Форма оплати',group:'finance'},
+    currency:{label:'Валюта',group:'finance'},
+    weight:{label:'Вага багажу',group:'details'},
+    weightPrice:{label:'Ціна багажу',group:'details'},
     phoneReg:{label:'Тел. реєстратора',group:'details'},
-    weight:{label:'Вага',group:'details'},
-    timing:{label:'Таймінг',group:'details'},
-    dateReg:{label:'Дата оформлення',group:'details'},
-    note:{label:'Примітка',group:'details'}
+    dateCreated:{label:'Дата створення',group:'details'},
+    leadStatus:{label:'Статус ліда',group:'details'},
+    crmStatus:{label:'Статус CRM',group:'details'},
+    rteId:{label:'RTE_ID',group:'details'},
+    smartId:{label:'Ід_смарт/CRM',group:'details'}
 };
 
-let colSettings = {header:['name','phone','seats','from','to','date','payment'],details:['percent','note','mark','dispatcher','phoneReg','timing','dateReg','weight']};
+let colSettings = {header:['name','phone','seats','to','date','price'],details:['deposit','payStatus','payForm','currency','phoneReg','timing','weight','weightPrice','leadStatus','crmStatus']};
 let passengers = [
-    {id:'p1',date:'2025-02-20',name:'Семен Гора',phone:'+380639763484',from:'Кошице',to:'Ужгород',seats:2,payment:'60',vehicle:'v1',status:'new',isNew:true,order:0,direction:'eu-ua'},
-    {id:'p2',date:'2025-02-20',name:'Катерина Ятухівська',phone:'+380973874545',from:'Братислава',to:'Ужгород',seats:1,payment:'60',vehicle:'v1',status:'work',isNew:false,order:1,direction:'eu-ua'},
-    {id:'p3',date:'2025-02-20',name:'Мирослава Попович',phone:'+380668910320',from:'Прешов',to:'Ужгород',seats:2,payment:'120',vehicle:'',status:'new',isNew:false,order:2,direction:'eu-ua'},
-    {id:'p4',date:'2025-02-21',name:'Ольга Рудніцька',phone:'+380963890596',from:'Київ',to:'Братислава',seats:1,payment:'80',vehicle:'',status:'new',isNew:true,order:3,direction:'ua-eu'},
-    {id:'p5',date:'2025-02-21',name:'Віктор Давидов',phone:'+380961524193',from:'Житомир',to:'Братислава',seats:2,payment:'120',vehicle:'v2',status:'route',isNew:false,order:4,direction:'ua-eu'},
-    {id:'p6',date:'2025-02-22',name:'Алла Бердникова',phone:'+421907299343',from:'Братислава',to:'Вінниця',seats:1,payment:'60',vehicle:'',status:'new',isNew:true,order:5,direction:'eu-ua'}
+    // Дані будуть завантажені з API при ініціалізації
 ];
 // Таблиця маршрутів пасажирів
 const ROUTE_SPREADSHEET_ID = '1iKlD0Bj-5qB3Gc1d5ZBHscbRipcSe5xU7svqBfpB77Y';
@@ -2272,45 +2296,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Завантажуємо дані одразу з таблиці (єдине джерело правди)
     showLoader('Завантаження пасажирів...', '');
-    fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'getAll' })
-    })
-    .then(r => r.json())
-    .then(data => {
+    Promise.all([
+        fetch(API_URL + '?action=getPassengers&sheet=Україна-ЄВ').then(r => r.json()),
+        fetch(API_URL + '?action=getPassengers&sheet=Європа-УК').then(r => r.json())
+    ])
+    .then(([dataUaEu, dataEuUa]) => {
         hideLoader();
-        if (data.success && data.passengers) {
-            passengers = data.passengers.map(p => {
-                let normalizedStatus = (p.status || '').toString().toLowerCase().trim();
-                if (!normalizedStatus) normalizedStatus = 'new';
-                return {
-                    id: p.id || 'srv_' + p.rowNum,
-                    date: normalizeDate(p.date),
-                    name: p.name || '',
-                    phone: p.phone || '',
-                    phoneReg: p.phoneReg || '',
-                    from: p.from || '',
-                    to: p.to || '',
-                    seats: p.seats || 1,
-                    payment: p.payment || '',
-                    percent: p.percent || '',
-                    mark: p.mark || '',
-                    dispatcher: p.dispatcher || '',
-                    weight: p.weight || '',
-                    vehicle: p.vehicle || '',
-                    timing: p.timing || '',
-                    dateReg: normalizeDate(p.dateReg),
-                    note: p.note || '',
-                    direction: p.direction,
-                    status: normalizedStatus,
-                    statusDate: p.statusDate || '',
-                    isNew: p.isNew,
-                    isNew24h: p.isNew,
-                    _sheet: p.sheet,
-                    _rowNum: p.rowNum
-                };
-            });
+        if (dataUaEu.success && dataEuUa.success) {
+            passengers = [
+                ...dataUaEu.data.map(p => mapServerPassenger(p, 'ua-eu')),
+                ...dataEuUa.data.map(p => mapServerPassenger(p, 'eu-ua'))
+            ];
         }
 
         // Відновлюємо останній вибраний таб або "Нові ліди" за замовчуванням
@@ -2352,54 +2348,23 @@ document.addEventListener('DOMContentLoaded', () => {
 function silentSync() {
     // Не оновлюємо якщо відкрита модалка редагування
     if (document.getElementById('passengerModal')?.classList.contains('show')) return;
-    
-    fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'getAll' })
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            const oldCount = passengers.length;
-            const serverPassengers = data.passengers.map(p => {
-                // Нормалізуємо статус (lowercase, trim)
-                let normalizedStatus = (p.status || '').toString().toLowerCase().trim();
-                if (!normalizedStatus) normalizedStatus = 'new';
-                
-                return {
-                    id: p.id || 'srv_' + p.rowNum,
-                    date: normalizeDate(p.date),
-                    name: p.name || '',
-                    phone: p.phone || '',
-                    phoneReg: p.phoneReg || '',
-                    from: p.from || '',
-                    to: p.to || '',
-                    seats: p.seats || 1,
-                    payment: p.payment || '',
-                    percent: p.percent || '',
-                    mark: p.mark || '',
-                    dispatcher: p.dispatcher || '',
-                    weight: p.weight || '',
-                    vehicle: p.vehicle || '',
-                    timing: p.timing || '',
-                    dateReg: normalizeDate(p.dateReg),
-                    note: p.note || '',
-                    direction: p.direction,
-                    status: normalizedStatus,
-                    statusDate: p.statusDate || '',
-                    isNew: p.isNew,
-                    isNew24h: p.isNew,
-                    _sheet: p.sheet,
-                    _rowNum: p.rowNum
-                };
-            });
-            
+
+    Promise.all([
+        fetch(API_URL + '?action=getPassengers&sheet=Україна-ЄВ').then(r => r.json()),
+        fetch(API_URL + '?action=getPassengers&sheet=Європа-УК').then(r => r.json())
+    ])
+    .then(([dataUaEu, dataEuUa]) => {
+        if (dataUaEu.success && dataEuUa.success) {
+            const serverPassengers = [
+                ...dataUaEu.data.map(p => mapServerPassenger(p, 'ua-eu')),
+                ...dataEuUa.data.map(p => mapServerPassenger(p, 'eu-ua'))
+            ];
+
             // Перевіряємо чи є нові ліди
             const newCount = serverPassengers.filter(p => p.isNew && p.status !== 'archived').length;
             const oldNewCount = passengers.filter(p => p.isNew && p.status !== 'archived').length;
 
-            // Мержимо з локальними — зберігаємо vehicle та CRM-only поля
+            // Мержимо з локальними
             const localMap = {};
             passengers.forEach(p => {
                 if (p._sheet && p._rowNum) localMap[`${p._sheet}_${p._rowNum}`] = p;
@@ -2416,15 +2381,13 @@ function silentSync() {
 
             passengers = serverPassengers;
             saveSettings();
-            
-            // Оновлюємо UI тільки якщо не в режимі маршруту
+
             if (filters.statusFilter !== 'route') {
                 render();
                 updateAllCounts();
                 renderCalendars();
             }
-            
-            // Якщо з'явились нові ліди - сповіщаємо
+
             if (newCount > oldNewCount) {
                 playNotificationSound();
                 showToast(`🆕 Новий лід! (${newCount})`);
@@ -2458,8 +2421,8 @@ function playNotificationSound() {
     }
 }
 
-function loadSettings() { try { const s = JSON.parse(localStorage.getItem('yuraCrmV16')||'{}'); if(s.colSettings)colSettings=s.colSettings; if(s.lastTab)lastTab=s.lastTab; } catch(e){} }
-function saveSettings() { localStorage.setItem('yuraCrmV16', JSON.stringify({colSettings,lastTab})); }
+function loadSettings() { try { const s = JSON.parse(localStorage.getItem('escoCrmV18')||'{}'); if(s.colSettings)colSettings=s.colSettings; if(s.lastTab)lastTab=s.lastTab; } catch(e){} }
+function saveSettings() { localStorage.setItem('escoCrmV18', JSON.stringify({colSettings,lastTab})); }
 
 // SIDE MENU
 function openSideMenu() { document.getElementById('sideMenu').classList.add('open'); document.getElementById('sideMenuOverlay').classList.add('show'); renderMobileCalendar(); updateMobileVehicles(); }
@@ -2535,7 +2498,7 @@ function updateDashboard() {
     const completed = active.filter(p => p.status === 'route' || p.status === 'done').length;
     const totalSeats = active.reduce((sum, p) => sum + (parseInt(p.seats) || 1), 0);
     const totalSum = active.reduce((sum, p) => {
-        const payment = parseFloat(String(p.payment || '0').replace(/[^0-9.,]/g, '').replace(',', '.')) || 0;
+        const payment = parseFloat(String(p.price || '0').replace(/[^0-9.,]/g, '').replace(',', '.')) || 0;
         return sum + payment;
     }, 0);
     
@@ -2546,7 +2509,7 @@ function updateDashboard() {
     
     // 2. Потребують уваги
     const noVehicle = active.filter(p => !p.vehicle).length;
-    const noPayment = active.filter(p => !p.payment || p.payment === '' || p.payment === '0').length;
+    const noPayment = active.filter(p => !p.price || p.price === '' || p.price === '0').length;
     const inWork = active.filter(p => p.status === 'work' || p.status === 'new').length;
     
     document.getElementById('dashNoVehicle').textContent = noVehicle;
@@ -2564,7 +2527,7 @@ function updateDashboard() {
         if (veh && vehicleStats[veh.id]) {
             vehicleStats[veh.id].orders++;
             vehicleStats[veh.id].seats += parseInt(p.seats) || 1;
-            const payment = parseFloat(String(p.payment || '0').replace(/[^0-9.,]/g, '').replace(',', '.')) || 0;
+            const payment = parseFloat(String(p.price || '0').replace(/[^0-9.,]/g, '').replace(',', '.')) || 0;
             vehicleStats[veh.id].sum += payment;
         }
     });
@@ -2598,7 +2561,7 @@ function updateDashboard() {
             };
         }
         clientsMap[phone].trips++;
-        const payment = parseFloat(String(p.payment || '0').replace(/[^0-9.,]/g, '').replace(',', '.')) || 0;
+        const payment = parseFloat(String(p.price || '0').replace(/[^0-9.,]/g, '').replace(',', '.')) || 0;
         clientsMap[phone].sum += payment;
         // Оновлюємо ім'я якщо є
         if (p.name && p.name.length > clientsMap[phone].name.length) {
@@ -2944,7 +2907,7 @@ function getFilteredData() {
         // Фільтруємо по даті оформлення (dateReg) або isNew24h
         data = data.filter(p => {
             // Якщо є dateReg - перевіряємо чи за останні 24 год
-            if (p.dateReg && p.dateReg >= yesterdayStr) return true;
+            if (p.dateCreated && p.dateCreated >= yesterdayStr) return true;
             // Або якщо позначено як isNew24h
             if (p.isNew24h) return true;
             return false;
@@ -2983,12 +2946,12 @@ function getFilteredData() {
                 p.name || '',
                 p.phone || '',
                 p.phoneReg || '',
-                p.from || '',
                 p.to || '',
-                p.note || '',
-                p.dispatcher || '',
-                p.payment || '',
-                p.mark || ''
+                p.price || '',
+                p.smartId || '',
+                p.seatInCar || '',
+                p.leadStatus || '',
+                p.crmStatus || ''
             ].join(' ').toLowerCase();
             return searchStr.includes(s);
         }); 
@@ -3074,8 +3037,7 @@ function render() {
         const phoneDisplay = hasSearch ? highlightSearch(p.phone || '—') : (p.phone || '—');
         const seatsDisplay = p.seats || 1;
         const dateDisplay = p.date ? getFieldValue(p, 'date') : '—';
-        const priceDisplay = p.payment ? '€' + p.payment : '';
-        const routeFrom = hasSearch ? highlightSearch(p.from || '—') : (p.from || '—');
+        const priceDisplay = p.price ? p.price + ' ' + (p.currency || 'UAH') : '';
         const routeTo = hasSearch ? highlightSearch(p.to || '—') : (p.to || '—');
         const idDisplay = hasSearch ? highlightSearch(p.id || '—') : (p.id || '—');
         const nameDisplay = hasSearch ? highlightSearch(p.name || '—') : (p.name || '—');
@@ -3145,7 +3107,7 @@ function render() {
             </div>
             <div class="card-actions ${aOpen ? 'show' : ''}">
                 <button class="btn-card-action btn-call" onclick="event.stopPropagation();location.href='tel:${p.phone}'">📞 Дзвонити</button>
-                <button class="btn-card-action btn-msg" onclick="event.stopPropagation();window.open('https://console.smartsender.com/contacts?project=yura-transportation-131349','_blank')">💬 Писати</button>
+                <button class="btn-card-action btn-msg" onclick="event.stopPropagation();window.open('https://console.smartsender.com/contacts?project=escoexpress','_blank')">💬 Писати</button>
                 <button class="btn-card-action btn-map" onclick="event.stopPropagation();openMapModal('${uniqueKey}')">🗺️ Карта</button>
                 <button class="btn-card-action btn-edit" onclick="event.stopPropagation();editPassenger('${uniqueKey}')">✏️ Редагувати</button>
                 <button class="btn-card-action btn-delete" onclick="event.stopPropagation();deletePassenger('${uniqueKey}')">🗑️ Видалити</button>
@@ -3399,7 +3361,7 @@ function updateAllCounts() {
     const now = new Date();
     const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const yesterdayStr = yesterday.toISOString().split('T')[0];
-    const newLeads = active.filter(p => (p.dateReg && p.dateReg >= yesterdayStr) || p.isNew24h);
+    const newLeads = active.filter(p => (p.dateCreated && p.dateCreated >= yesterdayStr) || p.isNew24h);
     
     document.getElementById('countAll').textContent = active.length;
     // countRoute оновлюється через updateAllRoutesCount() API
@@ -3959,23 +3921,24 @@ function renderRoutePassengers() {
                             <span class="card-phone copyable" onclick="event.stopPropagation();copyField(this)">${p.phone || '—'}</span>
                             <span class="card-seats">👥 ${p.seats || 1}</span>
                             <span class="card-date">${p.date || '—'}</span>
-                            ${p.payment ? `<span class="card-price">💰 ${p.payment}</span>` : ''}
+                            ${p.price ? `<span class="card-price">${p.price} ${p.currency || 'UAH'}</span>` : ''}
                         </div>
                         <div class="card-row2-wrap">
                             <div class="card-route-row">
-                                <span class="card-route"><span class="copyable" onclick="event.stopPropagation();copyField(this)">${p.from || '?'}</span> <span class="card-route-arrow">→</span> <span class="copyable" onclick="event.stopPropagation();copyField(this)">${p.to || '?'}</span></span>
+                                <span class="card-route"><span class="copyable" onclick="event.stopPropagation();copyField(this)">${p.to || '?'}</span></span>
                             </div>
                             <div class="card-info-row">
                                 <span class="card-id copyable" onclick="event.stopPropagation();copyField(this)">${p.id || '—'}</span>
                                 <span class="card-name">${p.name || '—'}</span>
+                                ${p.payStatus ? `<span style="font-size:9px;padding:1px 5px;border-radius:8px;background:${p.payStatus==='Оплачено'?'#d1fae5':p.payStatus==='Частково'?'#fef3c7':'#fee2e2'};color:${p.payStatus==='Оплачено'?'#059669':p.payStatus==='Частково'?'#d97706':'#dc2626'};font-weight:600;">${p.payStatus}</span>` : ''}
                             </div>
                         </div>
                         <div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                             ${statusBadge}
                             ${notifyBadge}
                             ${p.timing ? `<span style="font-size:10px;color:#666;">⏰ ${p.timing}</span>` : ''}
+                            ${p.seatInCar ? `<span style="font-size:10px;color:#666;">💺 ${p.seatInCar}</span>` : ''}
                         </div>
-                        ${p.note ? `<div style="font-size:10px;color:#666;margin-top:4px;font-style:italic;">📝 ${p.note}</div>` : ''}
                     </div>
                     <div class="card-right-section">
                         <div class="card-vehicle">
@@ -3990,21 +3953,24 @@ function renderRoutePassengers() {
                         <div class="detail-item"><span class="detail-label">📞 Реєстратор</span><span class="detail-value">${p.phoneReg || '—'}</span></div>
                         <div class="detail-item"><span class="detail-label">👤 ПІБ</span><span class="detail-value">${p.name || '—'}</span></div>
                         <div class="detail-item"><span class="detail-label">👥 Місць</span><span class="detail-value">${p.seats || 1}</span></div>
-                        <div class="detail-item"><span class="detail-label">📍 Звідки</span><span class="detail-value">${p.from || '—'}</span></div>
-                        <div class="detail-item"><span class="detail-label">📍 Куди</span><span class="detail-value">${p.to || '—'}</span></div>
-                        <div class="detail-item"><span class="detail-label">💰 Оплата</span><span class="detail-value">${p.payment || '—'}</span></div>
-                        <div class="detail-item"><span class="detail-label">📊 Відсоток</span><span class="detail-value">${p.percent || '—'}</span></div>
+                        <div class="detail-item"><span class="detail-label">📍 Адреса прибуття</span><span class="detail-value">${p.to || '—'}</span></div>
+                        <div class="detail-item"><span class="detail-label">💰 Ціна квитка</span><span class="detail-value">${p.price || '—'} ${p.currency || ''}</span></div>
+                        <div class="detail-item"><span class="detail-label">💵 Завдаток</span><span class="detail-value">${p.deposit || '—'}</span></div>
+                        <div class="detail-item"><span class="detail-label">💳 Оплата</span><span class="detail-value">${p.payStatus || '—'} / ${p.payForm || '—'}</span></div>
                         <div class="detail-item"><span class="detail-label">⏰ Таймінг</span><span class="detail-value">${p.timing || '—'}</span></div>
                         <div class="detail-item"><span class="detail-label">📅 Дата виїзду</span><span class="detail-value">${p.date || '—'}</span></div>
-                        <div class="detail-item"><span class="detail-label">👨‍💼 Диспетчер</span><span class="detail-value">${p.dispatcher || '—'}</span></div>
-                        <div class="detail-item"><span class="detail-label">⚖️ Вага</span><span class="detail-value">${p.weight || '—'}</span></div>
+                        <div class="detail-item"><span class="detail-label">💺 Місце в авто</span><span class="detail-value">${p.seatInCar || '—'}</span></div>
+                        <div class="detail-item"><span class="detail-label">⚖️ Вага багажу</span><span class="detail-value">${p.weight ? p.weight + ' кг' : '—'}${p.weightPrice ? ' / ' + p.weightPrice + ' ' + (p.currency||'') : ''}</span></div>
+                        <div class="detail-item"><span class="detail-label">🏷️ Статус ліда</span><span class="detail-value">${p.leadStatus || '—'}</span></div>
+                        <div class="detail-item"><span class="detail-label">📊 Статус CRM</span><span class="detail-value">${p.crmStatus || '—'}</span></div>
+                        ${p.rteId ? `<div class="detail-item"><span class="detail-label">🚌 RTE_ID</span><span class="detail-value">${p.rteId}</span></div>` : ''}
+                        ${p.smartId ? `<div class="detail-item"><span class="detail-label">🤖 Смарт ID</span><span class="detail-value">${p.smartId}</span></div>` : ''}
                     </div>
-                    ${p.note ? `<div class="detail-note"><span class="detail-label">📝 Примітка</span><div>${p.note}</div></div>` : ''}
                 </div>
                 <div class="card-actions" id="actions_${p._uid}">
                     <button class="btn-card-action btn-call" onclick="event.stopPropagation();location.href='tel:${p.phone}'">📞 Дзвонити</button>
-                    <button class="btn-card-action btn-msg" onclick="event.stopPropagation();window.open('https://console.smartsender.com/contacts?project=yura-transportation-131349','_blank')">💬 Писати</button>
-                    <button class="btn-card-action btn-map" onclick="event.stopPropagation();openRouteMap('${encodeURIComponent(p.from || '')}','${encodeURIComponent(p.to || '')}')">🗺️ Карта</button>
+                    <button class="btn-card-action btn-msg" onclick="event.stopPropagation();window.open('https://console.smartsender.com/contacts','_blank')">💬 Писати</button>
+                    <button class="btn-card-action btn-map" onclick="event.stopPropagation();openRouteMap('','${encodeURIComponent(p.to || '')}')">🗺️ Карта</button>
                     <button class="btn-card-action btn-edit" onclick="event.stopPropagation();editPassenger('${p._uid}')">✏️ Редагувати</button>
                     <button class="btn-card-action btn-delete" onclick="event.stopPropagation();showRouteDeleteChoice('${p._uid}')">🗑️ Видалити</button>
                 </div>
@@ -4331,10 +4297,7 @@ function bulkRestore() {
                 p.statusDate = '';
                 delete p.prevStatus;
                 delete p.archiveType;
-                // Очищаємо причину відмови/пересадки з примітки
-                if (p.note) {
-                    p.note = p.note.replace(/^(Відмова|Пересадка|Перенос|Видалено):.*?\|?\s*/i, '');
-                }
+                // Статуси очищено
             }
         });
     };
@@ -4712,7 +4675,7 @@ function executeCopyToRoute(byVehicle, withVehicle, conflictAction) {
         if (data.success) {
             withVehicle.forEach(p => {
                 p.status = 'route';
-                p.mark = 'Маршрут';
+                p.leadStatus = 'Підтверджено';
             });
             saveSettings();
             render();
@@ -5070,7 +5033,7 @@ function applyStatusToSelected(status, note) {
             p.archiveType = status; // refused, transferred, deleted, archived
             p.status = 'archived'; // Всі дії ведуть в Архів
             p.statusDate = today;
-            p.note = note + (p.note ? ` | ${p.note}` : '');
+            // Архівна причина зберігається в archiveType
             p.isNew = false;
             count++;
 
@@ -5458,14 +5421,13 @@ async function startOptimization() {
             id: p.id || '',
             name: p.name || '',
             phone: p.phone || '',
-            from: p.from || '',
             to: p.to || '',
             seats: p.seats || 1,
             date: p.date || '',
-            payment: p.payment || '',
+            price: p.price || '',
             direction: p.direction || '',
             vehicle: p.vehicle || '',
-            address: (optimizeBy === 'from' ? p.from : p.to) || '',
+            address: p.to || '',
             coords: null,
             _uid: (p._sheet && p._rowNum) ? `${p._sheet}_${p._rowNum}` : null,
             _sheet: p._sheet,
@@ -5690,7 +5652,7 @@ function openGoogleMaps() {
     if (!optimized.length) return showToast('⚠️ Немає оптимізованих заявок');
 
     // Будуємо URL маршруту через waypoints
-    const addresses = optimized.map(p => optimizeBy === 'from' ? p.from : p.to).filter(Boolean);
+    const addresses = optimized.map(p => p.to).filter(Boolean);
     if (addresses.length === 0) return showToast('❌ Немає адрес');
 
     const origin = encodeURIComponent(addresses[0]);
@@ -5901,41 +5863,43 @@ function deleteVehicle(vehicleId) {
 }
 
 // PASSENGERS
-function openAddModal() { 
-    editingId = null; 
-    document.getElementById('passengerModalTitle').textContent = 'Додати'; 
-    document.getElementById('fDate').value = filters.date || new Date().toISOString().split('T')[0]; 
+function openAddModal() {
+    editingId = null;
+    document.getElementById('passengerModalTitle').textContent = 'Додати';
+    document.getElementById('fDate').value = filters.date || new Date().toISOString().split('T')[0];
     document.getElementById('fDirection').value = filters.direction !== 'all' ? filters.direction : 'ua-eu';
-    ['fName','fPhone','fPhoneReg','fFrom','fTo','fPayment','fPercent','fMark','fDispatcher','fWeight','fTiming','fNote'].forEach(id => document.getElementById(id).value = ''); 
-    document.getElementById('fSeats').value = 1; 
-    document.getElementById('fVehicle').value = filters.vehicle || ''; 
-    document.getElementById('fDateReg').value = new Date().toISOString().split('T')[0];
-    document.getElementById('passengerModal').classList.add('show'); 
+    ['fName','fPhone','fPhoneReg','fTo','fPrice','fDeposit','fWeight','fWeightPrice','fTiming','fSeatInCar'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('fSeats').value = 1;
+    document.getElementById('fVehicle').value = filters.vehicle || '';
+    document.getElementById('fPayStatus').value = 'Не оплачено';
+    document.getElementById('fPayForm').value = '';
+    document.getElementById('fCurrency').value = 'UAH';
+    document.getElementById('passengerModal').classList.add('show');
 }
 
 function editPassenger(uid) {
     const p = findPassengerByUid(uid);
     if (!p) return;
     editingId = uid;
-    updateVehiclesList(); // Оновлюємо список авто
+    updateVehiclesList();
     document.getElementById('passengerModalTitle').textContent = 'Редагувати';
     document.getElementById('fDirection').value = p.direction || 'ua-eu';
     document.getElementById('fDate').value = p.date || '';
     document.getElementById('fName').value = p.name || '';
     document.getElementById('fPhone').value = p.phone || '';
     document.getElementById('fPhoneReg').value = p.phoneReg || '';
-    document.getElementById('fFrom').value = p.from || '';
     document.getElementById('fTo').value = p.to || '';
     document.getElementById('fSeats').value = p.seats || 1;
-    document.getElementById('fPayment').value = p.payment || '';
-    document.getElementById('fPercent').value = p.percent || '';
+    document.getElementById('fPrice').value = p.price || '';
+    document.getElementById('fDeposit').value = p.deposit || '';
+    document.getElementById('fPayStatus').value = p.payStatus || 'Не оплачено';
+    document.getElementById('fPayForm').value = p.payForm || '';
+    document.getElementById('fCurrency').value = p.currency || 'UAH';
     document.getElementById('fVehicle').value = p.vehicle || '';
-    document.getElementById('fMark').value = p.mark || '';
-    document.getElementById('fDispatcher').value = p.dispatcher || '';
+    document.getElementById('fSeatInCar').value = p.seatInCar || '';
     document.getElementById('fWeight').value = p.weight || '';
+    document.getElementById('fWeightPrice').value = p.weightPrice || '';
     document.getElementById('fTiming').value = p.timing || '';
-    document.getElementById('fDateReg').value = p.dateReg || '';
-    document.getElementById('fNote').value = p.note || '';
     // Закриваємо дії картки
     openActionsId = null;
     document.querySelectorAll('.card-actions').forEach(el => el.classList.remove('show'));
@@ -6053,10 +6017,10 @@ function confirmDeletePassenger(uid) {
     }
 }
 
-function savePassenger() { 
+function savePassenger() {
     const isEditing = !!editingId;
     const existingP = isEditing ? findPassengerByUid(editingId) : null;
-    
+
     const d = {
         id: existingP?.id || 'p' + Date.now(),
         direction: document.getElementById('fDirection').value,
@@ -6064,18 +6028,21 @@ function savePassenger() {
         name: document.getElementById('fName').value || '—',
         phone: document.getElementById('fPhone').value,
         phoneReg: document.getElementById('fPhoneReg').value,
-        from: document.getElementById('fFrom').value,
         to: document.getElementById('fTo').value,
         seats: parseInt(document.getElementById('fSeats').value) || 1,
-        payment: document.getElementById('fPayment').value,
-        percent: document.getElementById('fPercent').value,
+        price: document.getElementById('fPrice').value,
+        deposit: document.getElementById('fDeposit').value,
+        payStatus: document.getElementById('fPayStatus').value,
+        payForm: document.getElementById('fPayForm').value,
+        currency: document.getElementById('fCurrency').value,
         vehicle: document.getElementById('fVehicle').value,
-        mark: document.getElementById('fMark').value,
-        dispatcher: document.getElementById('fDispatcher').value,
+        seatInCar: document.getElementById('fSeatInCar').value || '',
         weight: document.getElementById('fWeight').value,
+        weightPrice: document.getElementById('fWeightPrice').value || '',
         timing: document.getElementById('fTiming').value,
-        dateReg: document.getElementById('fDateReg').value,
-        note: document.getElementById('fNote').value,
+        smartId: existingP?.smartId || '',
+        leadStatus: existingP?.leadStatus || 'Новий',
+        crmStatus: existingP?.crmStatus || 'Активний',
         status: existingP?.status || 'new',
         isNew: !editingId,
         order: passengers.length * 10
@@ -6149,8 +6116,8 @@ function toggleDetailsCol(k) {
 }
 function resetColumnsSettings() {
     colSettings = {
-        header: ['name','phone','seats','from','to','date','payment'],
-        details: ['percent','note','mark','dispatcher','phoneReg','timing','dateReg','weight']
+        header: ['name','phone','seats','to','date','price'],
+        details: ['deposit','payStatus','payForm','currency','phoneReg','timing','weight','weightPrice','leadStatus','crmStatus']
     };
     renderColumnsList();
     showToast('🔄 Скинуто');
@@ -6292,9 +6259,9 @@ function openMapModal(uid) {
     
     currentMapPassengerId = uid;
     
-    document.getElementById('mapFromAddress').textContent = p.from || '—';
+    document.getElementById('mapFromAddress').textContent = 'Львів (фікс.)';
     document.getElementById('mapToAddress').textContent = p.to || '—';
-    document.getElementById('mapRouteAddress').textContent = (p.from && p.to) ? `${p.from} → ${p.to}` : '—';
+    document.getElementById('mapRouteAddress').textContent = p.to ? `Львів → ${p.to}` : '—';
     
     document.getElementById('mapModal').classList.add('show');
 }
@@ -6305,12 +6272,12 @@ function openMapLocation(type) {
     
     let url = '';
     
-    if (type === 'from' && p.from) {
-        url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.from)}`;
+    if (type === 'from') {
+        url = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent('Львів');
     } else if (type === 'to' && p.to) {
         url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.to)}`;
-    } else if (type === 'route' && p.from && p.to) {
-        url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(p.from)}&destination=${encodeURIComponent(p.to)}`;
+    } else if (type === 'route' && p.to) {
+        url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent('Львів')}&destination=${encodeURIComponent(p.to)}`;
     }
     
     if (url) {
@@ -6322,16 +6289,14 @@ function openMapLocation(type) {
 }
 
 // ============================================
-// GOOGLE SHEETS API
+// GOOGLE SHEETS API — Єдиний бекенд EscoExpress CRM
 // ============================================
-// Пасажири (основна таблиця даних)
-const API_URL = 'https://script.google.com/macros/s/AKfycbxXVqoG5NZrSXOYx1uj3IYup5GhotV95Y-DwavSi6WJoxtfXq4WbYPzQBuMm2QUXkkV/exec';
+// Один уніфікований API (CRM_Backend.gs)
+const API_URL = 'https://script.google.com/macros/s/YOUR_DEPLOYED_SCRIPT_ID/exec';
 
-// Маршрути пасажирів (окремий скрипт)
-const ROUTE_API_URL = 'https://script.google.com/macros/s/AKfycbzPJHn3OlBJbRlHvveT453NKUZMViUMMmfD9yqttGZ0b7mVCeKcUum_UsmamUe43g/exec';
-
-// Архів v1.0
-const ARCHIVE_API_URL = 'https://script.google.com/macros/s/AKfycbwJLGZgYT333VdMW-nM5kPjYs2WIGGjfqkZnDJYjJxUt8nzE8GDGCPm7EzMHhcxNDOn/exec';
+// Зворотна сумісність — всі ведуть на один API
+const ROUTE_API_URL = API_URL;
+const ARCHIVE_API_URL = API_URL;
 
 // Нормалізація дати до формату YYYY-MM-DD
 function normalizeDate(dateStr) {
@@ -6353,60 +6318,29 @@ function normalizeDate(dateStr) {
     return '';
 }
 
-// SYNC - Отримати всіх пасажирів (POST запит!)
+// SYNC - Отримати всіх пасажирів з обох аркушів
 function syncWithSheets() {
     showLoader('Синхронізація...', '');
-    
-    fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'getAll' })
-    })
-    .then(r => r.json())
-    .then(data => {
+
+    // Завантажуємо обидва аркуші паралельно
+    Promise.all([
+        fetch(API_URL + '?action=getPassengers&sheet=Україна-ЄВ').then(r => r.json()),
+        fetch(API_URL + '?action=getPassengers&sheet=Європа-УК').then(r => r.json())
+    ])
+    .then(([dataUaEu, dataEuUa]) => {
         hideLoader();
-        if (data.success) {
-            // Мержимо з локальними (зберігаємо локальні зміни)
-            const serverPassengers = data.passengers.map(p => {
-                // Нормалізуємо статус (lowercase, trim)
-                let normalizedStatus = (p.status || '').toString().toLowerCase().trim();
-                if (!normalizedStatus) normalizedStatus = 'new';
-                
-                return {
-                    id: p.id || 'srv_' + p.rowNum,
-                    date: normalizeDate(p.date),
-                    name: p.name || '',
-                    phone: p.phone || '',
-                    phoneReg: p.phoneReg || '',
-                    from: p.from || '',
-                    to: p.to || '',
-                    seats: p.seats || 1,
-                    payment: p.payment || '',
-                    percent: p.percent || '',
-                    mark: p.mark || '',
-                    dispatcher: p.dispatcher || '',
-                    weight: p.weight || '',
-                    vehicle: p.vehicle || '',
-                    timing: p.timing || '',
-                    dateReg: normalizeDate(p.dateReg),
-                    note: p.note || '',
-                    direction: p.direction,
-                    status: normalizedStatus,
-                    statusDate: p.statusDate || '',
-                    isNew: p.isNew,
-                    isNew24h: p.isNew, // Зберігаємо для фільтра "Нові" (не зникає при кліку)
-                    // Зберігаємо інфо для оновлення
-                    _sheet: p.sheet,
-                    _rowNum: p.rowNum
-                };
-            });
-            
-            // Мержимо з локальними — зберігаємо vehicle та CRM-only поля
+        if (dataUaEu.success && dataEuUa.success) {
+            const allRecords = [
+                ...dataUaEu.data.map(p => mapServerPassenger(p, 'ua-eu')),
+                ...dataEuUa.data.map(p => mapServerPassenger(p, 'eu-ua'))
+            ];
+
+            // Мержимо з локальними — зберігаємо CRM-only поля
             const localMapSync = {};
             passengers.forEach(p => {
                 if (p._sheet && p._rowNum) localMapSync[`${p._sheet}_${p._rowNum}`] = p;
             });
-            serverPassengers.forEach(sp => {
+            allRecords.forEach(sp => {
                 const local = localMapSync[`${sp._sheet}_${sp._rowNum}`];
                 if (local) {
                     if (local.prevStatus) sp.prevStatus = local.prevStatus;
@@ -6414,15 +6348,15 @@ function syncWithSheets() {
                 }
             });
 
-            passengers = serverPassengers;
+            passengers = allRecords;
             saveSettings();
             render();
             updateAllCounts();
             renderCalendars();
 
-            showToast(`✅ Завантажено: ${data.counts.total}`);
+            showToast(`✅ Завантажено: ${allRecords.length}`);
         } else {
-            showToast('❌ Помилка: ' + (data.error || 'Невідома'));
+            showToast('❌ Помилка: ' + (dataUaEu.error || dataEuUa.error || 'Невідома'));
         }
     })
     .catch(err => {
@@ -6432,55 +6366,103 @@ function syncWithSheets() {
     });
 }
 
-// SAVE - Додати нового пасажира на сервер
+// Маппінг серверного запису → локальний об'єкт пасажира
+function mapServerPassenger(p, directionHint) {
+    // Визначаємо напрям
+    const rawDir = (p['Напрям'] || '').toString();
+    let direction = directionHint || 'ua-eu';
+    if (rawDir.indexOf('ЄВ') === 0 || rawDir.indexOf('eu') !== -1) direction = 'eu-ua';
+    else if (rawDir.indexOf('УК') === 0 || rawDir.indexOf('ua') !== -1) direction = 'ua-eu';
+
+    // Маппінг статусу CRM → внутрішній статус
+    const crmStatus = (p['Статус CRM'] || '').toString().toLowerCase().trim();
+    const leadStatus = (p['Статус ліда'] || '').toString().toLowerCase().trim();
+    let status = 'new';
+    if (crmStatus === 'активний' && leadStatus === 'підтверджено') status = 'work';
+    else if (crmStatus === 'скасовано') status = 'archived';
+    else if (leadStatus === 'скасовано') status = 'refused';
+    else if (leadStatus === 'новий') status = 'new';
+
+    return {
+        id: p['PAX_ID'] || 'srv_' + p._rowNum,
+        smartId: p['Ід_смарт/CRM'] || '',
+        date: normalizeDate(p['Дата виїзду']),
+        name: p['Піб'] || '',
+        phone: p['Телефон пасажира'] || '',
+        phoneReg: p['Телефон реєстратора'] || '',
+        to: p['Адреса прибуття'] || '',
+        seats: p['Кількість місць'] || 1,
+        price: p['Ціна квитка'] || '',
+        deposit: p['Завдаток'] || '',
+        payStatus: p['Статус оплати'] || '',
+        payForm: p['Форма оплати'] || '',
+        currency: p['Валюта'] || 'UAH',
+        weight: p['Вага багажу'] || '',
+        weightPrice: p['Ціна багажу'] || '',
+        vehicle: p['Номер авто'] || '',
+        seatInCar: p['Місце в авто'] || '',
+        timing: p['Таймінг'] || '',
+        rteId: p['RTE_ID'] || '',
+        dateCreated: normalizeDate(p['Дата створення']),
+        leadStatus: p['Статус ліда'] || 'Новий',
+        crmStatus: p['Статус CRM'] || 'Активний',
+        direction: direction,
+        status: status,
+        isNew: leadStatus === 'новий',
+        isNew24h: leadStatus === 'новий',
+        _sheet: p['SOURCE_SHEET'] || '',
+        _rowNum: p._rowNum || ''
+    };
+}
+
+// SAVE - Додати нового пасажира на сервер (уніфікований API)
 function savePassengerToServer(passenger) {
     showLoader('Збереження...', '');
-    
+
+    const sheetName = passenger.direction === 'eu-ua' ? 'Європа-УК' : 'Україна-ЄВ';
+
     const payload = {
-        action: 'addPassenger',
-        payload: {
-            direction: passenger.direction,
-            initials: getUserInitials(),
-            date: passenger.date,
-            from: passenger.from,
-            to: passenger.to,
-            seats: passenger.seats,
+        action: 'createPassenger',
+        sheet: sheetName,
+        data: {
+            smartId: passenger.smartId || '',
             name: passenger.name,
             phone: passenger.phone,
-            phoneReg: passenger.phoneReg,
-            mark: passenger.mark,
-            payment: passenger.payment,
-            percent: passenger.percent,
-            dispatcher: passenger.dispatcher || 'CRM',
-            weight: passenger.weight,
-            vehicle: passenger.vehicle,
-            timing: passenger.timing,
-            dateReg: passenger.dateReg,
-            note: passenger.note
+            phoneReg: passenger.phoneReg || '',
+            seats: passenger.seats,
+            address: passenger.to,
+            departureDate: passenger.date,
+            timing: passenger.timing || '',
+            vehicle: passenger.vehicle || '',
+            seat: passenger.seatInCar || '',
+            price: passenger.price || '',
+            deposit: passenger.deposit || '',
+            payStatus: passenger.payStatus || 'Не оплачено',
+            payForm: passenger.payForm || '',
+            currency: passenger.currency || 'UAH',
+            weight: passenger.weight || '',
+            weightPrice: passenger.weightPrice || '',
+            createdBy: getUserInitials() || 'CRM'
         }
     };
-    
+
     fetch(API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
     })
     .then(r => r.json())
     .then(data => {
         hideLoader();
         if (data.success) {
-            // Оновлюємо локальний ID
             const p = passengers.find(x => x.id === passenger.id);
             if (p) {
                 p.id = data.id;
-                p._sheet = data.sheet;
-                p._rowNum = data.rowNum;
+                p._sheet = sheetName;
             }
             saveSettings();
             render();
             showToast('✅ Збережено: ' + data.id);
-            
-            // Перевіряємо місткість після додавання
             checkAllCapacityWarnings();
         } else {
             showToast('⚠️ Помилка: ' + data.error);
@@ -6506,37 +6488,47 @@ function updatePassengerOnServer(passenger) {
     const isRoute = !!passenger._isRouteData;
     const apiUrl = isRoute ? ROUTE_API_URL : API_URL;
 
-    const payload = {
-        action: 'updatePassenger',
-        payload: {
-            sheet: pSheet,
-            rowNum: pRowNum,
-            date: passenger.date,
-            from: passenger.from,
-            to: passenger.to,
-            seats: passenger.seats,
-            name: passenger.name,
-            phone: passenger.phone,
-            phoneReg: passenger.phoneReg,
-            mark: passenger.mark || '',
-            payment: passenger.payment,
-            percent: passenger.percent,
-            dispatcher: passenger.dispatcher,
-            weight: passenger.weight,
-            vehicle: passenger.vehicle,
-            timing: passenger.timing,
-            dateReg: passenger.dateReg,
-            note: passenger.note,
-            status: passenger.status || '',
-            statusDate: passenger.statusDate || ''
-        }
+    // Оновлюємо кожне поле окремо через уніфікований API
+    const fieldsToUpdate = {
+        'Дата виїзду': passenger.date,
+        'Адреса прибуття': passenger.to,
+        'Кількість місць': passenger.seats,
+        'Піб': passenger.name,
+        'Телефон пасажира': passenger.phone,
+        'Телефон реєстратора': passenger.phoneReg,
+        'Ціна квитка': passenger.price,
+        'Завдаток': passenger.deposit,
+        'Статус оплати': passenger.payStatus,
+        'Форма оплати': passenger.payForm,
+        'Валюта': passenger.currency,
+        'Вага багажу': passenger.weight,
+        'Ціна багажу': passenger.weightPrice,
+        'Номер авто': passenger.vehicle,
+        'Місце в авто': passenger.seatInCar,
+        'Таймінг': passenger.timing,
+        'Статус ліда': passenger.leadStatus,
+        'Статус CRM': passenger.crmStatus
     };
 
-    fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(payload)
-    })
+    // Відправляємо bulk update як серію updateField
+    const promises = Object.entries(fieldsToUpdate).map(([field, value]) => {
+        return fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'updateField',
+                spreadsheetId: 'PASSENGERS',
+                sheet: pSheet,
+                idColumn: 'PAX_ID',
+                recordId: passenger.id,
+                field: field,
+                value: value || '',
+                updatedBy: getUserInitials() || 'CRM'
+            })
+        });
+    });
+
+    Promise.all(promises)
     .then(r => r.json())
     .then(data => {
         if (data.success) {
@@ -6555,34 +6547,35 @@ function updatePassengerOnServer(passenger) {
 function movePassengerDirection(oldPassenger, newData) {
     showLoader('Зміна напрямку...', '');
 
+    const newSheetName = newData.direction === 'eu-ua' ? 'Європа-УК' : 'Україна-ЄВ';
+
     const addPayload = {
-        action: 'addPassenger',
-        payload: {
-            direction: newData.direction,
-            initials: getUserInitials(),
-            date: newData.date,
-            from: newData.from,
-            to: newData.to,
-            seats: newData.seats,
+        action: 'createPassenger',
+        sheet: newSheetName,
+        data: {
             name: newData.name,
             phone: newData.phone,
-            phoneReg: newData.phoneReg,
-            mark: newData.mark,
-            payment: newData.payment,
-            percent: newData.percent,
-            dispatcher: newData.dispatcher || 'CRM',
-            weight: newData.weight,
-            vehicle: newData.vehicle,
-            timing: newData.timing,
-            dateReg: newData.dateReg,
-            note: newData.note,
-            force: true
+            phoneReg: newData.phoneReg || '',
+            seats: newData.seats,
+            address: newData.to,
+            departureDate: newData.date,
+            timing: newData.timing || '',
+            vehicle: newData.vehicle || '',
+            seat: newData.seatInCar || '',
+            price: newData.price || '',
+            deposit: newData.deposit || '',
+            payStatus: newData.payStatus || 'Не оплачено',
+            payForm: newData.payForm || '',
+            currency: newData.currency || 'UAH',
+            weight: newData.weight || '',
+            weightPrice: newData.weightPrice || '',
+            createdBy: getUserInitials() || 'CRM'
         }
     };
 
     fetch(API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(addPayload)
     })
     .then(r => r.json())
