@@ -337,6 +337,19 @@ const CLIENT_REVIEW_COLUMNS = [
 ];
 
 
+// ── КОНФІГУРАЦІЯ РЯДКІВ ЗАГОЛОВКІВ ─────────────────────────────
+// Таблиці з мульти-рядковими заголовками (рядок 1 = титул, 2 = групи, 3 = заголовки, 4 = описи, 5+ = дані)
+const HEADER_ROW = {
+  "Україна-ЄВ": 3, "Європа-УК": 3,
+  "Реєстрація ТТН УК-єв": 3, "Виклик Курєра ЄВ-ук": 3,
+  "Цюріх": 3, "Женева": 3, "Оптимістичний": 3,
+};
+const DATA_START_ROW = {
+  "Україна-ЄВ": 5, "Європа-УК": 5,
+  "Реєстрація ТТН УК-єв": 5, "Виклик Курєра ЄВ-ук": 5,
+  "Цюріх": 5, "Женева": 5, "Оптимістичний": 5,
+};
+
 // ── ДОПОМІЖНІ ФУНКЦІЇ ────────────────────────────────────────
 
 /**
@@ -347,18 +360,40 @@ function getSheet(spreadsheetId, sheetName) {
 }
 
 /**
+ * Повертає номер рядка з заголовками (3 для мульти-рядкових, 1 для стандартних)
+ */
+function getHeaderRow(sheetName) {
+  return HEADER_ROW[sheetName] || 1;
+}
+
+/**
+ * Повертає номер першого рядка з даними (5 для мульти-рядкових, 2 для стандартних)
+ */
+function getDataStartRow(sheetName) {
+  return DATA_START_ROW[sheetName] || 2;
+}
+
+/**
  * Знаходить рядок за значенням у конкретній колонці
+ * Підтримує мульти-рядкові заголовки (рядки 1-2 = титул/групи, 3 = заголовки)
  * Повертає об'єкт { row: номер_рядка, data: масив_значень } або null
  */
 function findRowByColumn(sheet, columnName, value) {
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const colIndex = headers.indexOf(columnName);
+  var sheetName = sheet.getName();
+  var headerRow = getHeaderRow(sheetName);
+  var dataStartRow = getDataStartRow(sheetName);
+
+  var headers = sheet.getRange(headerRow, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var colIndex = headers.indexOf(columnName);
   if (colIndex === -1) return null;
 
-  const data = sheet.getDataRange().getValues();
-  for (var i = 1; i < data.length; i++) {
+  var lastRow = sheet.getLastRow();
+  if (lastRow < dataStartRow) return null;
+
+  var data = sheet.getRange(dataStartRow, 1, lastRow - dataStartRow + 1, sheet.getLastColumn()).getValues();
+  for (var i = 0; i < data.length; i++) {
     if (data[i][colIndex] == value) {
-      return { row: i + 1, data: data[i], headers: headers };
+      return { row: dataStartRow + i, data: data[i], headers: headers };
     }
   }
   return null;
@@ -1293,7 +1328,10 @@ function doPost(e) {
       result = { success: true };
     }
     else if (action === "updateField") {
-      updateSingleField(body.spreadsheetId, body.sheet, body.idColumn, body.recordId,
+      // Дозволяємо передавати ключ з CONFIG замість реального ID
+      var ssId = body.spreadsheetId;
+      if (CONFIG.SPREADSHEETS[ssId]) ssId = CONFIG.SPREADSHEETS[ssId];
+      updateSingleField(ssId, body.sheet, body.idColumn, body.recordId,
         body.field, body.value, body.updatedBy);
       result = { success: true };
     }
@@ -1312,16 +1350,27 @@ function doPost(e) {
 
 /**
  * Отримує всі записи з аркуша як масив об'єктів
+ * Підтримує мульти-рядкові заголовки
  */
 function getAllRecords(spreadsheetId, sheetName) {
   var sheet = getSheet(spreadsheetId, sheetName);
-  var data = sheet.getDataRange().getValues();
-  if (data.length <= 1) return { success: true, data: [] };
+  var headerRow = getHeaderRow(sheetName);
+  var dataStartRow = getDataStartRow(sheetName);
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
 
-  var headers = data[0];
+  if (lastRow < dataStartRow || lastCol === 0) return { success: true, data: [] };
+
+  var headers = sheet.getRange(headerRow, 1, 1, lastCol).getValues()[0];
+  var data = sheet.getRange(dataStartRow, 1, lastRow - dataStartRow + 1, lastCol).getValues();
+
   var records = [];
-  for (var i = 1; i < data.length; i++) {
-    records.push(rowToObject(headers, data[i]));
+  for (var i = 0; i < data.length; i++) {
+    // Пропускаємо порожні рядки (перевіряємо перший стовпець — ID)
+    if (!data[i][0] && !data[i][1]) continue;
+    var obj = rowToObject(headers, data[i]);
+    obj._rowNum = dataStartRow + i;
+    records.push(obj);
   }
   return { success: true, data: records };
 }
