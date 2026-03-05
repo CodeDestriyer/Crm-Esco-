@@ -1940,25 +1940,28 @@
                 <div class="form-group"><label>Статус оплати</label>
                     <select id="fPayStatus" style="background:var(--bg-main);">
                         <option value="Не оплачено">Не оплачено</option>
-                        <option value="Частково">Частково</option>
                         <option value="Оплачено">Оплачено</option>
+                        <option value="Борг">Борг</option>
                     </select>
                 </div>
                 <div class="form-group"><label>Форма оплати</label>
                     <select id="fPayForm" style="background:var(--bg-main);">
                         <option value="">—</option>
+                        <option value="Картка">Картка</option>
                         <option value="Готівка">Готівка</option>
-                        <option value="Карта">Карта</option>
-                        <option value="Переказ">Переказ</option>
+                        <option value="Частково картка, частково готівка">Частково картка, частково готівка</option>
                     </select>
                 </div>
             </div>
             <div class="form-row">
                 <div class="form-group"><label>Валюта</label>
                     <select id="fCurrency" style="background:var(--bg-main);">
-                        <option value="UAH">UAH</option>
-                        <option value="EUR">EUR</option>
-                        <option value="CHF">CHF</option>
+                        <option value="UAH">UAH (гривня)</option>
+                        <option value="USD">USD (долар)</option>
+                        <option value="EUR">EUR (євро)</option>
+                        <option value="CHF">CHF (франк)</option>
+                        <option value="PLN">PLN (злотий)</option>
+                        <option value="CZK">CZK (крони чеські)</option>
                     </select>
                 </div>
                 <div class="form-group"><label>Авто</label><select id="fVehicle"><option value="">—</option></select></div>
@@ -3956,7 +3959,7 @@ function renderRoutePassengers() {
                             <div class="card-info-row">
                                 <span class="card-id copyable" onclick="event.stopPropagation();copyField(this)">${p.id || '—'}</span>
                                 <span class="card-name">${p.name || '—'}</span>
-                                ${p.payStatus ? `<span style="font-size:9px;padding:1px 5px;border-radius:8px;background:${p.payStatus==='Оплачено'?'#d1fae5':p.payStatus==='Частково'?'#fef3c7':'#fee2e2'};color:${p.payStatus==='Оплачено'?'#059669':p.payStatus==='Частково'?'#d97706':'#dc2626'};font-weight:600;">${p.payStatus}</span>` : ''}
+                                ${p.payStatus ? `<span style="font-size:9px;padding:1px 5px;border-radius:8px;background:${p.payStatus==='Оплачено'?'#d1fae5':p.payStatus==='Борг'?'#fef3c7':'#fee2e2'};color:${p.payStatus==='Оплачено'?'#059669':p.payStatus==='Борг'?'#d97706':'#dc2626'};font-weight:600;">${p.payStatus}</span>` : ''}
                             </div>
                         </div>
                         <div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
