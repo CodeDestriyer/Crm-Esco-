@@ -702,10 +702,17 @@
         .detail-note .detail-label { margin-bottom: 4px; }
         .card-expand-icon { font-size: 10px; color: var(--text-secondary); transition: transform 0.2s; }
         .lead-card.expanded .card-expand-icon { transform: rotate(180deg); }
-        .detail-block { background: white; border: 1px solid var(--border); border-left: 3px solid var(--primary); border-radius: 6px; padding: 8px 10px; }
+        .detail-block { background: white; border: 1px solid var(--border); border-left: 3px solid var(--primary); border-radius: 6px; padding: 8px 10px; position: relative; }
         .detail-block-label { font-size: 9px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 2px; }
         .detail-block-value { font-size: 12px; font-weight: 600; color: var(--text-primary); word-break: break-word; }
         .detail-block-value.empty { color: var(--text-secondary); opacity: 0.5; }
+        .detail-block-actions { position: absolute; top: 4px; right: 4px; display: flex; gap: 2px; opacity: 0; transition: opacity 0.15s; }
+        .detail-block:hover .detail-block-actions { opacity: 1; }
+        .detail-micro-btn { width: 20px; height: 20px; border: none; border-radius: 4px; background: var(--bg-secondary); color: var(--text-secondary); font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; line-height: 1; }
+        .detail-micro-btn:hover { background: var(--primary); color: white; }
+        .detail-inline-edit { width: 100%; border: 1px solid var(--primary); border-radius: 4px; padding: 2px 4px; font-size: 12px; font-weight: 600; font-family: inherit; outline: none; }
+        /* Header field visibility */
+        .card-top-row > .card-field-hidden, .card-row2-wrap .card-field-hidden { display: none !important; }
         
         /* Actions panel - smooth slide */
         .card-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; max-height: 0; overflow: hidden; padding: 0 12px; background: white; transition: max-height 0.25s ease, padding 0.25s ease; }
@@ -2187,6 +2194,7 @@ const ALL_COLUMNS = {
     phone:{label:'Телефон пасажира',group:'row1'},
     seats:{label:'Місць',group:'row1'},
     id:{label:'PAX_ID',group:'row1'},
+    from:{label:'Адреса відправлення',group:'row2'},
     to:{label:'Адреса прибуття',group:'row2'},
     vehicle:{label:'Номер авто',group:'row2'},
     seatInCar:{label:'Місце в авто',group:'row2'},
@@ -2207,7 +2215,7 @@ const ALL_COLUMNS = {
     smartId:{label:'Ід_смарт/CRM',group:'details'}
 };
 
-let colSettings = {header:['name','phone','seats','to','date','price'],details:['deposit','payStatus','payForm','currency','phoneReg','timing','weight','weightPrice','leadStatus','crmStatus']};
+let colSettings = {header:['name','phone','seats','from','to','date','price'],details:['deposit','payStatus','payForm','currency','phoneReg','timing','weight','weightPrice','leadStatus','crmStatus']};
 let passengers = [
     // Дані будуть завантажені з API при ініціалізації
 ];
@@ -3052,13 +3060,30 @@ function render() {
             : `<span class="card-vehicle-badge empty" onclick="event.stopPropagation();toggleCardVehicle('${uniqueKey}')">—</span>`;
         const vehicleDropdown = `<div class="vehicle-dropdown" id="vd_${uniqueKey}">${vehDropdownItems}<div class="vehicle-dropdown-item" onclick="event.stopPropagation();quickAssignVehicle('${uniqueKey}','')" style="color:var(--warning);">❌ Зняти авто</div></div>`;
         
-        // Details blocks з підсвічуванням
+        // Header field visibility classes
+        const hCols = colSettings.header;
+        const hPhone = hCols.includes('phone') ? '' : 'card-field-hidden';
+        const hSeats = hCols.includes('seats') ? '' : 'card-field-hidden';
+        const hDate = hCols.includes('date') ? '' : 'card-field-hidden';
+        const hPrice = hCols.includes('price') ? '' : 'card-field-hidden';
+        const hRouteRow = (hCols.includes('from') || hCols.includes('to')) ? '' : 'card-field-hidden';
+        const hFrom = hCols.includes('from') ? '' : 'card-field-hidden';
+        const hTo = hCols.includes('to') ? '' : 'card-field-hidden';
+        const hId = hCols.includes('id') ? '' : 'card-field-hidden';
+        const hName = hCols.includes('name') ? '' : 'card-field-hidden';
+
+        // Details blocks з підсвічуванням + edit/copy кнопки
         const detailsHtml = detailCols.map(k => {
             let val = getFieldValue(p, k);
             if (hasSearch && val) val = highlightSearch(val);
+            const rawVal = getFieldValue(p, k);
             return `<div class="detail-block">
+                <div class="detail-block-actions">
+                    <button class="detail-micro-btn" title="Копіювати" onclick="event.stopPropagation();copyDetailValue('${uniqueKey}','${k}')">⧉</button>
+                    <button class="detail-micro-btn" title="Редагувати" onclick="event.stopPropagation();inlineEditField('${uniqueKey}','${k}',this)">✎</button>
+                </div>
                 <div class="detail-block-label">${ALL_COLUMNS[k]?.label || k}</div>
-                <div class="detail-block-value ${!getFieldValue(p,k) ? 'empty' : ''}">${val || '—'}</div>
+                <div class="detail-block-value ${!rawVal ? 'empty' : ''}" data-field="${k}">${val || '—'}</div>
             </div>`;
         }).join('');
         
@@ -3079,18 +3104,18 @@ function render() {
                     <div class="card-top-row">
                         ${orderNum}
                         <span class="card-direction" title="${p.direction === 'ua-eu' ? 'Україна → Європа' : 'Європа → Україна'}">${dirEmoji}</span>
-                        <span class="card-phone copyable" onclick="event.stopPropagation();copyField(this)" onmousedown="event.stopPropagation()">${phoneDisplay}</span>
-                        <span class="card-seats">👥 ${seatsDisplay}</span>
-                        <span class="card-date">${dateDisplay}</span>
-                        <span class="card-price">${priceDisplay}</span>
+                        <span class="card-phone copyable ${hPhone}" onclick="event.stopPropagation();copyField(this)" onmousedown="event.stopPropagation()">${phoneDisplay}</span>
+                        <span class="card-seats ${hSeats}">👥 ${seatsDisplay}</span>
+                        <span class="card-date ${hDate}">${dateDisplay}</span>
+                        <span class="card-price ${hPrice}">${priceDisplay}</span>
                     </div>
                     <div class="card-row2-wrap">
-                        <div class="card-route-row">
-                            <span class="card-route"><span class="copyable" onclick="event.stopPropagation();copyField(this)" onmousedown="event.stopPropagation()">${routeFrom}</span> <span class="card-route-arrow">→</span> <span class="copyable" onclick="event.stopPropagation();copyField(this)" onmousedown="event.stopPropagation()">${routeTo}</span></span>
+                        <div class="card-route-row ${hRouteRow}">
+                            <span class="card-route"><span class="copyable ${hFrom}" onclick="event.stopPropagation();copyField(this)" onmousedown="event.stopPropagation()">${routeFrom}</span> <span class="card-route-arrow">→</span> <span class="copyable ${hTo}" onclick="event.stopPropagation();copyField(this)" onmousedown="event.stopPropagation()">${routeTo}</span></span>
                         </div>
                         <div class="card-info-row">
-                            <span class="card-id copyable" onclick="event.stopPropagation();copyField(this)" onmousedown="event.stopPropagation()">${idDisplay}</span>
-                            <span class="card-name" onclick="event.stopPropagation()" onmousedown="event.stopPropagation()">${nameDisplay}</span>
+                            <span class="card-id copyable ${hId}" onclick="event.stopPropagation();copyField(this)" onmousedown="event.stopPropagation()">${idDisplay}</span>
+                            <span class="card-name ${hName}" onclick="event.stopPropagation()" onmousedown="event.stopPropagation()">${nameDisplay}</span>
                             ${p.isNew ? '<span class="new-tag">NEW</span>' : ''}
                         </div>
                     </div>
@@ -6117,7 +6142,7 @@ function toggleDetailsCol(k) {
 }
 function resetColumnsSettings() {
     colSettings = {
-        header: ['name','phone','seats','to','date','price'],
+        header: ['name','phone','seats','from','to','date','price'],
         details: ['deposit','payStatus','payForm','currency','phoneReg','timing','weight','weightPrice','leadStatus','crmStatus']
     };
     renderColumnsList();
@@ -6154,6 +6179,82 @@ function copyFallback(text) {
     document.execCommand('copy');
     document.body.removeChild(ta);
     showToast('📋 ' + text);
+}
+
+// Copy detail value by field key
+function copyDetailValue(uid, fieldKey) {
+    const p = findPassengerByUid(uid);
+    if (!p) return;
+    const val = getFieldValue(p, fieldKey) || p[fieldKey] || '';
+    if (!val || val === '—') { showToast('Немає даних'); return; }
+    const text = String(val);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => showToast('📋 ' + text)).catch(() => copyFallback(text));
+    } else { copyFallback(text); }
+}
+
+// Map field keys to API column names
+const FIELD_TO_API = {
+    date:'Дата виїзду', to:'Адреса прибуття', from:'Адреса відправлення', seats:'Кількість місць',
+    name:'Піб', phone:'Телефон пасажира', phoneReg:'Телефон реєстратора', price:'Ціна квитка',
+    deposit:'Завдаток', payStatus:'Статус оплати', payForm:'Форма оплати', currency:'Валюта',
+    weight:'Вага багажу', weightPrice:'Ціна багажу', vehicle:'Номер авто', seatInCar:'Місце в авто',
+    timing:'Таймінг', leadStatus:'Статус ліда', crmStatus:'Статус CRM'
+};
+
+// Inline edit a single field on the card
+function inlineEditField(uid, fieldKey, btn) {
+    const p = findPassengerByUid(uid);
+    if (!p) return;
+    const block = btn.closest('.detail-block');
+    const valEl = block.querySelector('.detail-block-value');
+    if (valEl.querySelector('.detail-inline-edit')) return; // already editing
+
+    const currentVal = p[fieldKey] || '';
+    const origHtml = valEl.innerHTML;
+    valEl.innerHTML = `<input class="detail-inline-edit" type="text" value="${String(currentVal).replace(/"/g, '&quot;')}" data-field="${fieldKey}" data-uid="${uid}">`;
+    const input = valEl.querySelector('.detail-inline-edit');
+    input.focus();
+    input.select();
+
+    function save() {
+        const newVal = input.value.trim();
+        if (newVal === String(currentVal)) { valEl.innerHTML = origHtml; return; }
+        p[fieldKey] = newVal;
+        valEl.innerHTML = getFieldValue(p, fieldKey) || '—';
+        valEl.classList.toggle('empty', !newVal);
+        // Update on server
+        const apiField = FIELD_TO_API[fieldKey];
+        if (p.id && apiField) {
+            const pSheet = p._sheet || (p.direction === 'ua-eu' ? 'UA-EU' : 'EU-UA');
+            fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify({
+                    action: 'updateField',
+                    spreadsheetId: 'PASSENGERS',
+                    sheet: pSheet,
+                    idColumn: 'PAX_ID',
+                    recordId: p.id,
+                    field: apiField,
+                    value: newVal || '',
+                    updatedBy: getUserInitials() || 'CRM'
+                })
+            }).then(r => r.json()).then(d => {
+                if (d.success) showToast('✅ Збережено');
+                else showToast('⚠️ ' + (d.error || 'Помилка'));
+            }).catch(() => showToast('⚠️ Збережено локально'));
+        } else {
+            showToast('✅ Збережено локально');
+        }
+    }
+
+    input.addEventListener('blur', save);
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+        if (e.key === 'Escape') { valEl.innerHTML = origHtml; }
+    });
+    input.addEventListener('click', e => e.stopPropagation());
 }
 
 // DIRECTION FILTER
