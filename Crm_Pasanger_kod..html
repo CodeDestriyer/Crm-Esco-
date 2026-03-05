@@ -702,10 +702,23 @@
         .detail-note .detail-label { margin-bottom: 4px; }
         .card-expand-icon { font-size: 10px; color: var(--text-secondary); transition: transform 0.2s; }
         .lead-card.expanded .card-expand-icon { transform: rotate(180deg); }
-        .detail-block { background: white; border: 1px solid var(--border); border-left: 3px solid var(--primary); border-radius: 6px; padding: 8px 10px; }
+        .detail-block { background: white; border: 1px solid var(--border); border-left: 3px solid var(--primary); border-radius: 6px; padding: 8px 10px; position: relative; }
         .detail-block-label { font-size: 9px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 2px; }
         .detail-block-value { font-size: 12px; font-weight: 600; color: var(--text-primary); word-break: break-word; }
         .detail-block-value.empty { color: var(--text-secondary); opacity: 0.5; }
+        .detail-block-actions { position: absolute; top: 4px; right: 4px; display: flex; gap: 2px; opacity: 0; transition: opacity 0.15s; }
+        .detail-block:hover .detail-block-actions { opacity: 1; }
+        .detail-micro-btn { width: 20px; height: 20px; border: none; border-radius: 4px; background: var(--bg-secondary); color: var(--text-secondary); font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; line-height: 1; }
+        .detail-micro-btn:hover { background: var(--primary); color: white; }
+        .detail-inline-edit { width: 100%; border: 1px solid var(--primary); border-radius: 4px; padding: 2px 4px; font-size: 12px; font-weight: 600; font-family: inherit; outline: none; background: white; }
+        select.detail-inline-edit { padding: 3px 4px; cursor: pointer; appearance: auto; }
+        .field-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+        /* Header field visibility */
+        .card-top-row > .card-field-hidden, .card-row2-wrap .card-field-hidden { display: none !important; }
+        /* Extra header fields (dynamic) */
+        .card-extra-fields { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--border); }
+        .card-extra-field { font-size: 11px; color: var(--text-primary); font-weight: 500; }
+        .card-extra-label { font-size: 9px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; }
         
         /* Actions panel - smooth slide */
         .card-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; max-height: 0; overflow: hidden; padding: 0 12px; background: white; transition: max-height 0.25s ease, padding 0.25s ease; }
@@ -1933,25 +1946,28 @@
                 <div class="form-group"><label>Статус оплати</label>
                     <select id="fPayStatus" style="background:var(--bg-main);">
                         <option value="Не оплачено">Не оплачено</option>
-                        <option value="Частково">Частково</option>
                         <option value="Оплачено">Оплачено</option>
+                        <option value="Борг">Борг</option>
                     </select>
                 </div>
                 <div class="form-group"><label>Форма оплати</label>
                     <select id="fPayForm" style="background:var(--bg-main);">
                         <option value="">—</option>
+                        <option value="Картка">Картка</option>
                         <option value="Готівка">Готівка</option>
-                        <option value="Карта">Карта</option>
-                        <option value="Переказ">Переказ</option>
+                        <option value="Частково картка, частково готівка">Частково картка, частково готівка</option>
                     </select>
                 </div>
             </div>
             <div class="form-row">
                 <div class="form-group"><label>Валюта</label>
                     <select id="fCurrency" style="background:var(--bg-main);">
-                        <option value="UAH">UAH</option>
-                        <option value="EUR">EUR</option>
-                        <option value="CHF">CHF</option>
+                        <option value="UAH">UAH (гривня)</option>
+                        <option value="USD">USD (долар)</option>
+                        <option value="EUR">EUR (євро)</option>
+                        <option value="CHF">CHF (франк)</option>
+                        <option value="PLN">PLN (злотий)</option>
+                        <option value="CZK">CZK (крони чеські)</option>
                     </select>
                 </div>
                 <div class="form-group"><label>Авто</label><select id="fVehicle"><option value="">—</option></select></div>
@@ -2187,6 +2203,7 @@ const ALL_COLUMNS = {
     phone:{label:'Телефон пасажира',group:'row1'},
     seats:{label:'Місць',group:'row1'},
     id:{label:'PAX_ID',group:'row1'},
+    from:{label:'Адреса відправлення',group:'row2'},
     to:{label:'Адреса прибуття',group:'row2'},
     vehicle:{label:'Номер авто',group:'row2'},
     seatInCar:{label:'Місце в авто',group:'row2'},
@@ -2207,7 +2224,7 @@ const ALL_COLUMNS = {
     smartId:{label:'Ід_смарт/CRM',group:'details'}
 };
 
-let colSettings = {header:['name','phone','seats','to','date','price'],details:['deposit','payStatus','payForm','currency','phoneReg','timing','weight','weightPrice','leadStatus','crmStatus']};
+let colSettings = {header:['name','phone','seats','from','to','date','price'],details:['deposit','payStatus','payForm','currency','phoneReg','timing','weight','weightPrice','leadStatus','crmStatus']};
 let passengers = [
     // Дані будуть завантажені з API при ініціалізації
 ];
@@ -2297,8 +2314,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Завантажуємо дані одразу з таблиці (єдине джерело правди)
     showLoader('Завантаження пасажирів...', '');
     Promise.all([
-        fetch(API_URL + '?action=getPassengers&sheet=Україна-ЄВ').then(r => r.json()),
-        fetch(API_URL + '?action=getPassengers&sheet=Європа-УК').then(r => r.json())
+        apiPost('getPassengers', { sheet: 'Україна-ЄВ' }),
+        apiPost('getPassengers', { sheet: 'Європа-УК' })
     ])
     .then(([dataUaEu, dataEuUa]) => {
         hideLoader();
@@ -2350,8 +2367,8 @@ function silentSync() {
     if (document.getElementById('passengerModal')?.classList.contains('show')) return;
 
     Promise.all([
-        fetch(API_URL + '?action=getPassengers&sheet=Україна-ЄВ').then(r => r.json()),
-        fetch(API_URL + '?action=getPassengers&sheet=Європа-УК').then(r => r.json())
+        apiPost('getPassengers', { sheet: 'Україна-ЄВ' }),
+        apiPost('getPassengers', { sheet: 'Європа-УК' })
     ])
     .then(([dataUaEu, dataEuUa]) => {
         if (dataUaEu.success && dataEuUa.success) {
@@ -3038,10 +3055,11 @@ function render() {
         const seatsDisplay = p.seats || 1;
         const dateDisplay = p.date ? getFieldValue(p, 'date') : '—';
         const priceDisplay = p.price ? p.price + ' ' + (p.currency || 'UAH') : '';
+        const routeFrom = hasSearch ? highlightSearch(p.from || '—') : (p.from || '—');
         const routeTo = hasSearch ? highlightSearch(p.to || '—') : (p.to || '—');
         const idDisplay = hasSearch ? highlightSearch(p.id || '—') : (p.id || '—');
         const nameDisplay = hasSearch ? highlightSearch(p.name || '—') : (p.name || '—');
-        
+
         // Vehicle badge - з dropdown для призначення авто
         const vehDropdownItems = vehicles.map(vi =>
             `<div class="vehicle-dropdown-item ${p.vehicle === vi.name || p.vehicle === vi.id ? 'active' : ''}" onclick="event.stopPropagation();quickAssignVehicle('${uniqueKey}','${vi.id}')">${vi.name}</div>`
@@ -3050,14 +3068,48 @@ function render() {
             ? `<span class="card-vehicle-badge" onclick="event.stopPropagation();toggleCardVehicle('${uniqueKey}')">${veh.name}</span>`
             : `<span class="card-vehicle-badge empty" onclick="event.stopPropagation();toggleCardVehicle('${uniqueKey}')">—</span>`;
         const vehicleDropdown = `<div class="vehicle-dropdown" id="vd_${uniqueKey}">${vehDropdownItems}<div class="vehicle-dropdown-item" onclick="event.stopPropagation();quickAssignVehicle('${uniqueKey}','')" style="color:var(--warning);">❌ Зняти авто</div></div>`;
-        
-        // Details blocks з підсвічуванням
-        const detailsHtml = detailCols.map(k => {
-            let val = getFieldValue(p, k);
+
+        // Header field visibility classes
+        const hCols = colSettings.header;
+        const hPhone = hCols.includes('phone') ? '' : 'card-field-hidden';
+        const hSeats = hCols.includes('seats') ? '' : 'card-field-hidden';
+        const hDate = hCols.includes('date') ? '' : 'card-field-hidden';
+        const hPrice = hCols.includes('price') ? '' : 'card-field-hidden';
+        const hRouteRow = (hCols.includes('from') || hCols.includes('to')) ? '' : 'card-field-hidden';
+        const hFrom = hCols.includes('from') ? '' : 'card-field-hidden';
+        const hTo = hCols.includes('to') ? '' : 'card-field-hidden';
+        const hId = hCols.includes('id') ? '' : 'card-field-hidden';
+        const hName = hCols.includes('name') ? '' : 'card-field-hidden';
+
+        // Додаткові поля заголовку (ті що не входять в стандартний layout)
+        const standardHeaderKeys = ['name','phone','seats','id','from','to','date','price'];
+        const extraHeaderKeys = hCols.filter(k => !standardHeaderKeys.includes(k));
+        const extraHeaderHtml = extraHeaderKeys.length ? '<div class="card-extra-fields">' + extraHeaderKeys.map(k => {
+            let rawVal = getFieldValue(p, k);
+            let val = rawVal;
             if (hasSearch && val) val = highlightSearch(val);
+            const colorInfo = FIELD_COLORS[k]?.[rawVal];
+            const valHtml = (colorInfo && rawVal) ? `<span class="field-badge" style="background:${colorInfo.bg};color:${colorInfo.color}">${val}</span>` : (val || '—');
+            return `<span class="card-extra-field copyable" onclick="event.stopPropagation();copyField(this)" onmousedown="event.stopPropagation()"><span class="card-extra-label">${ALL_COLUMNS[k]?.label || k}:</span> ${valHtml}</span>`;
+        }).join('') + '</div>' : '';
+
+        // Details blocks з підсвічуванням + edit/copy кнопки + кольорові бейджі
+        const detailsHtml = detailCols.map(k => {
+            let rawVal = getFieldValue(p, k);
+            let displayVal = rawVal;
+            if (hasSearch && displayVal) displayVal = highlightSearch(displayVal);
+            // Кольоровий бейдж для полів з варіантами
+            const colorInfo = FIELD_COLORS[k]?.[rawVal];
+            if (colorInfo && rawVal) {
+                displayVal = `<span class="field-badge" style="background:${colorInfo.bg};color:${colorInfo.color}">${displayVal || rawVal}</span>`;
+            }
             return `<div class="detail-block">
+                <div class="detail-block-actions">
+                    <button class="detail-micro-btn" title="Копіювати" onclick="event.stopPropagation();copyDetailValue('${uniqueKey}','${k}')">⧉</button>
+                    <button class="detail-micro-btn" title="Редагувати" onclick="event.stopPropagation();inlineEditField('${uniqueKey}','${k}',this)">✎</button>
+                </div>
                 <div class="detail-block-label">${ALL_COLUMNS[k]?.label || k}</div>
-                <div class="detail-block-value ${!getFieldValue(p,k) ? 'empty' : ''}">${val || '—'}</div>
+                <div class="detail-block-value ${!rawVal ? 'empty' : ''}" data-field="${k}">${displayVal || '—'}</div>
             </div>`;
         }).join('');
         
@@ -3078,21 +3130,22 @@ function render() {
                     <div class="card-top-row">
                         ${orderNum}
                         <span class="card-direction" title="${p.direction === 'ua-eu' ? 'Україна → Європа' : 'Європа → Україна'}">${dirEmoji}</span>
-                        <span class="card-phone copyable" onclick="event.stopPropagation();copyField(this)" onmousedown="event.stopPropagation()">${phoneDisplay}</span>
-                        <span class="card-seats">👥 ${seatsDisplay}</span>
-                        <span class="card-date">${dateDisplay}</span>
-                        <span class="card-price">${priceDisplay}</span>
+                        <span class="card-phone copyable ${hPhone}" onclick="event.stopPropagation();copyField(this)" onmousedown="event.stopPropagation()">${phoneDisplay}</span>
+                        <span class="card-seats ${hSeats}">👥 ${seatsDisplay}</span>
+                        <span class="card-date ${hDate}">${dateDisplay}</span>
+                        <span class="card-price ${hPrice}">${priceDisplay}</span>
                     </div>
                     <div class="card-row2-wrap">
-                        <div class="card-route-row">
-                            <span class="card-route"><span class="copyable" onclick="event.stopPropagation();copyField(this)" onmousedown="event.stopPropagation()">${routeFrom}</span> <span class="card-route-arrow">→</span> <span class="copyable" onclick="event.stopPropagation();copyField(this)" onmousedown="event.stopPropagation()">${routeTo}</span></span>
+                        <div class="card-route-row ${hRouteRow}">
+                            <span class="card-route"><span class="copyable ${hFrom}" onclick="event.stopPropagation();copyField(this)" onmousedown="event.stopPropagation()">${routeFrom}</span> <span class="card-route-arrow">→</span> <span class="copyable ${hTo}" onclick="event.stopPropagation();copyField(this)" onmousedown="event.stopPropagation()">${routeTo}</span></span>
                         </div>
                         <div class="card-info-row">
-                            <span class="card-id copyable" onclick="event.stopPropagation();copyField(this)" onmousedown="event.stopPropagation()">${idDisplay}</span>
-                            <span class="card-name" onclick="event.stopPropagation()" onmousedown="event.stopPropagation()">${nameDisplay}</span>
+                            <span class="card-id copyable ${hId}" onclick="event.stopPropagation();copyField(this)" onmousedown="event.stopPropagation()">${idDisplay}</span>
+                            <span class="card-name ${hName}" onclick="event.stopPropagation()" onmousedown="event.stopPropagation()">${nameDisplay}</span>
                             ${p.isNew ? '<span class="new-tag">NEW</span>' : ''}
                         </div>
                     </div>
+                    ${extraHeaderHtml}
                 </div>
                 <div class="card-right-section">
                     <div class="card-vehicle">
@@ -3930,7 +3983,7 @@ function renderRoutePassengers() {
                             <div class="card-info-row">
                                 <span class="card-id copyable" onclick="event.stopPropagation();copyField(this)">${p.id || '—'}</span>
                                 <span class="card-name">${p.name || '—'}</span>
-                                ${p.payStatus ? `<span style="font-size:9px;padding:1px 5px;border-radius:8px;background:${p.payStatus==='Оплачено'?'#d1fae5':p.payStatus==='Частково'?'#fef3c7':'#fee2e2'};color:${p.payStatus==='Оплачено'?'#059669':p.payStatus==='Частково'?'#d97706':'#dc2626'};font-weight:600;">${p.payStatus}</span>` : ''}
+                                ${p.payStatus ? `<span style="font-size:9px;padding:1px 5px;border-radius:8px;background:${p.payStatus==='Оплачено'?'#d1fae5':p.payStatus==='Борг'?'#fef3c7':'#fee2e2'};color:${p.payStatus==='Оплачено'?'#059669':p.payStatus==='Борг'?'#d97706':'#dc2626'};font-weight:600;">${p.payStatus}</span>` : ''}
                             </div>
                         </div>
                         <div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -6116,7 +6169,7 @@ function toggleDetailsCol(k) {
 }
 function resetColumnsSettings() {
     colSettings = {
-        header: ['name','phone','seats','to','date','price'],
+        header: ['name','phone','seats','from','to','date','price'],
         details: ['deposit','payStatus','payForm','currency','phoneReg','timing','weight','weightPrice','leadStatus','crmStatus']
     };
     renderColumnsList();
@@ -6153,6 +6206,127 @@ function copyFallback(text) {
     document.execCommand('copy');
     document.body.removeChild(ta);
     showToast('📋 ' + text);
+}
+
+// Copy detail value by field key
+function copyDetailValue(uid, fieldKey) {
+    const p = findPassengerByUid(uid);
+    if (!p) return;
+    const val = getFieldValue(p, fieldKey) || p[fieldKey] || '';
+    if (!val || val === '—') { showToast('Немає даних'); return; }
+    const text = String(val);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => showToast('📋 ' + text)).catch(() => copyFallback(text));
+    } else { copyFallback(text); }
+}
+
+// Map field keys to API column names
+const FIELD_TO_API = {
+    date:'Дата виїзду', to:'Адреса прибуття', from:'Адреса відправлення', seats:'Кількість місць',
+    name:'Піб', phone:'Телефон пасажира', phoneReg:'Телефон реєстратора', price:'Ціна квитка',
+    deposit:'Завдаток', payStatus:'Статус оплати', payForm:'Форма оплати', currency:'Валюта',
+    weight:'Вага багажу', weightPrice:'Ціна багажу', vehicle:'Номер авто', seatInCar:'Місце в авто',
+    timing:'Таймінг', leadStatus:'Статус ліда', crmStatus:'Статус CRM'
+};
+
+// Dropdown options for select fields
+const FIELD_OPTIONS = {
+    currency: ['UAH','USD','EUR','CHF','PLN','CZK'],
+    payStatus: ['Не оплачено','Оплачено','Борг'],
+    payForm: ['','Картка','Готівка','Частково картка, частково готівка'],
+    leadStatus: ['Новий','В роботі','Підтверджено','Скасовано'],
+    crmStatus: ['Імпорт','Активний','Архів']
+};
+
+// Color config for badge-style display
+const FIELD_COLORS = {
+    payStatus: { 'Оплачено': {bg:'#d1fae5',color:'#059669'}, 'Не оплачено': {bg:'#fee2e2',color:'#dc2626'}, 'Борг': {bg:'#fef3c7',color:'#d97706'} },
+    currency: { 'UAH': {bg:'#dbeafe',color:'#2563eb'}, 'USD': {bg:'#d1fae5',color:'#059669'}, 'EUR': {bg:'#ede9fe',color:'#7c3aed'}, 'CHF': {bg:'#fce7f3',color:'#db2777'}, 'PLN': {bg:'#fef3c7',color:'#d97706'}, 'CZK': {bg:'#e0e7ff',color:'#4338ca'} },
+    payForm: { 'Картка': {bg:'#dbeafe',color:'#2563eb'}, 'Готівка': {bg:'#d1fae5',color:'#059669'}, 'Частково картка, частково готівка': {bg:'#fef3c7',color:'#d97706'} },
+    leadStatus: { 'Новий': {bg:'#dbeafe',color:'#2563eb'}, 'В роботі': {bg:'#fef3c7',color:'#d97706'}, 'Підтверджено': {bg:'#d1fae5',color:'#059669'}, 'Скасовано': {bg:'#fee2e2',color:'#dc2626'} },
+    crmStatus: { 'Імпорт': {bg:'#e0e7ff',color:'#4338ca'}, 'Активний': {bg:'#d1fae5',color:'#059669'}, 'Архів': {bg:'#f3f4f6',color:'#6b7280'} }
+};
+
+// Format value with color badge if applicable
+function formatFieldHtml(fieldKey, val) {
+    if (!val || val === '—') return '—';
+    const colors = FIELD_COLORS[fieldKey]?.[val];
+    if (colors) return `<span class="field-badge" style="background:${colors.bg};color:${colors.color}">${val}</span>`;
+    return val;
+}
+
+// Inline edit a single field on the card
+function inlineEditField(uid, fieldKey, btn) {
+    const p = findPassengerByUid(uid);
+    if (!p) return;
+    const block = btn.closest('.detail-block');
+    const valEl = block.querySelector('.detail-block-value');
+    if (valEl.querySelector('.detail-inline-edit')) return;
+
+    const currentVal = p[fieldKey] || '';
+    const origHtml = valEl.innerHTML;
+    const options = FIELD_OPTIONS[fieldKey];
+
+    if (options) {
+        // Render <select> for fields with predefined options
+        const optionsHtml = options.map(o => {
+            const label = o || '—';
+            const colors = FIELD_COLORS[fieldKey]?.[o];
+            const style = colors ? `style="background:${colors.bg};color:${colors.color}"` : '';
+            return `<option value="${o}" ${o === currentVal ? 'selected' : ''} ${style}>${label}</option>`;
+        }).join('');
+        valEl.innerHTML = `<select class="detail-inline-edit" data-field="${fieldKey}" data-uid="${uid}">${optionsHtml}</select>`;
+        const sel = valEl.querySelector('select');
+        sel.focus();
+        sel.addEventListener('change', () => { saveInlineField(p, fieldKey, sel.value, valEl, currentVal); });
+        sel.addEventListener('blur', () => {
+            setTimeout(() => { if (valEl.querySelector('select')) valEl.innerHTML = origHtml; }, 150);
+        });
+        sel.addEventListener('click', e => e.stopPropagation());
+    } else {
+        // Render <input> for free-text fields
+        valEl.innerHTML = `<input class="detail-inline-edit" type="text" value="${String(currentVal).replace(/"/g, '&quot;')}" data-field="${fieldKey}" data-uid="${uid}">`;
+        const input = valEl.querySelector('input');
+        input.focus();
+        input.select();
+        input.addEventListener('blur', () => { saveInlineField(p, fieldKey, input.value.trim(), valEl, currentVal); });
+        input.addEventListener('keydown', e => {
+            if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+            if (e.key === 'Escape') { valEl.innerHTML = origHtml; }
+        });
+        input.addEventListener('click', e => e.stopPropagation());
+    }
+}
+
+function saveInlineField(p, fieldKey, newVal, valEl, currentVal) {
+    if (newVal === String(currentVal)) { valEl.innerHTML = formatFieldHtml(fieldKey, getFieldValue(p, fieldKey)) || '—'; return; }
+    p[fieldKey] = newVal;
+    valEl.innerHTML = formatFieldHtml(fieldKey, getFieldValue(p, fieldKey)) || '—';
+    valEl.classList.toggle('empty', !newVal);
+    // Update on server
+    const apiField = FIELD_TO_API[fieldKey];
+    if (p.id && apiField) {
+        const pSheet = p._sheet || (p.direction === 'ua-eu' ? 'UA-EU' : 'EU-UA');
+        fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({
+                action: 'updateField',
+                spreadsheetId: 'PASSENGERS',
+                sheet: pSheet,
+                idColumn: 'PAX_ID',
+                recordId: p.id,
+                field: apiField,
+                value: newVal || '',
+                updatedBy: getUserInitials() || 'CRM'
+            })
+        }).then(r => r.json()).then(d => {
+            if (d.success) showToast('✅ Збережено');
+            else showToast('⚠️ ' + (d.error || 'Помилка'));
+        }).catch(() => showToast('⚠️ Збережено локально'));
+    } else {
+        showToast('✅ Збережено локально');
+    }
 }
 
 // DIRECTION FILTER
@@ -6291,12 +6465,21 @@ function openMapLocation(type) {
 // ============================================
 // GOOGLE SHEETS API — Єдиний бекенд EscoExpress CRM
 // ============================================
-// Один уніфікований API (CRM_Backend.gs)
-const API_URL = 'https://script.google.com/macros/s/AKfycbzh73KnYm6y-qulMtoAGgodJgS6hWHrISBu7QDfGQzmstkoLTHLf5rIZKGN_fgXdeHfyQ/exec';
+// Один уніфікований API — напряму Script_crm.gs (без зовнішнього бекенду)
+const API_URL = 'https://script.google.com/macros/s/AKfycbwfostl9_QtTAibYGFPG6TJIEAlxPGKSrrzq1Je4cFnVZALW_XnEqKzLLxIJAS3rJrpRA/exec';
 
 // Зворотна сумісність — всі ведуть на один API
 const ROUTE_API_URL = API_URL;
 const ARCHIVE_API_URL = API_URL;
+
+// POST-обгортка для API (все через POST — уникає CORS)
+function apiPost(action, payload) {
+    return fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(Object.assign({ action: action }, payload || {}))
+    }).then(r => r.json());
+}
 
 // Нормалізація дати до формату YYYY-MM-DD
 function normalizeDate(dateStr) {
@@ -6324,8 +6507,8 @@ function syncWithSheets() {
 
     // Завантажуємо обидва аркуші паралельно
     Promise.all([
-        fetch(API_URL + '?action=getPassengers&sheet=Україна-ЄВ').then(r => r.json()),
-        fetch(API_URL + '?action=getPassengers&sheet=Європа-УК').then(r => r.json())
+        apiPost('getPassengers', { sheet: 'Україна-ЄВ' }),
+        apiPost('getPassengers', { sheet: 'Європа-УК' })
     ])
     .then(([dataUaEu, dataEuUa]) => {
         hideLoader();
@@ -6448,7 +6631,7 @@ function savePassengerToServer(passenger) {
 
     fetch(API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(payload)
     })
     .then(r => r.json())
@@ -6514,7 +6697,7 @@ function updatePassengerOnServer(passenger) {
     const promises = Object.entries(fieldsToUpdate).map(([field, value]) => {
         return fetch(API_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({
                 action: 'updateField',
                 spreadsheetId: 'PASSENGERS',
@@ -6575,7 +6758,7 @@ function movePassengerDirection(oldPassenger, newData) {
 
     fetch(API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(addPayload)
     })
     .then(r => r.json())
@@ -6762,7 +6945,7 @@ async function startTagging() {
         try {
             const res = await fetch(TAG_PROXY_URL, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: {'Content-Type': 'text/plain'},
                 body: JSON.stringify({ userId: item.userId, tagName: tagName })
             });
             const data = await res.json();
