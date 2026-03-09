@@ -166,7 +166,9 @@
         .card-body:hover { background: #fafbfc; }
 
         .card-top-row { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; min-height: 24px; }
-        .card-direction { font-size: 14px; flex-shrink: 0; }
+        .card-direction { font-size: 11px; font-weight: 900; flex-shrink: 0; padding: 3px 8px; border-radius: 6px; letter-spacing: 0.5px; }
+        .dir-badge-ua-eu { background: linear-gradient(135deg, #dbeafe, #bfdbfe); color: #1d4ed8; }
+        .dir-badge-eu-ua { background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #047857; }
         .card-phone { font-size: 14px; font-weight: 700; color: var(--primary); letter-spacing: 0.3px; white-space: nowrap; }
         .card-seats { background: var(--info); color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: 700; flex-shrink: 0; }
         .card-date { background: var(--bg-main); color: var(--text-primary); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; flex-shrink: 0; white-space: nowrap; }
@@ -587,11 +589,11 @@
             <span class="side-menu-item-count" id="mobileCountAll">0</span>
         </div>
         <div class="side-menu-item" id="mobileUaEu" onclick="showPaxView('ua-eu'); closeSideMenu();">
-            <span class="side-menu-item-left">🇺🇦→🇪🇺 Україна-Європа</span>
+            <span class="side-menu-item-left"><span class="card-direction dir-badge-ua-eu" style="font-size:10px;">UA → EU</span> Україна-Європа</span>
             <span class="side-menu-item-count" id="mobileCountUaEu">0</span>
         </div>
         <div class="side-menu-item" id="mobileEuUa" onclick="showPaxView('eu-ua'); closeSideMenu();">
-            <span class="side-menu-item-left">🇪🇺→🇺🇦 Європа-Україна</span>
+            <span class="side-menu-item-left"><span class="card-direction dir-badge-eu-ua" style="font-size:10px;">EU → UA</span> Європа-Україна</span>
             <span class="side-menu-item-count" id="mobileCountEuUa">0</span>
         </div>
         <div style="height:1px;background:rgba(255,255,255,0.1);margin:8px 0;"></div>
@@ -640,11 +642,11 @@
                     <span class="item-count" id="pcCountAll">0</span>
                 </div>
                 <div class="pc-sidebar-item" id="pcUaEu" onclick="showPaxView('ua-eu')">
-                    <span><span class="item-icon">🇺🇦→🇪🇺</span><span class="item-text">Україна-Європа</span></span>
+                    <span><span class="item-icon"><span class="card-direction dir-badge-ua-eu" style="font-size:9px;padding:2px 6px;">UA→EU</span></span><span class="item-text">Україна-Європа</span></span>
                     <span class="item-count" id="pcCountUaEu">0</span>
                 </div>
                 <div class="pc-sidebar-item" id="pcEuUa" onclick="showPaxView('eu-ua')">
-                    <span><span class="item-icon">🇪🇺→🇺🇦</span><span class="item-text">Європа-Україна</span></span>
+                    <span><span class="item-icon"><span class="card-direction dir-badge-eu-ua" style="font-size:9px;padding:2px 6px;">EU→UA</span></span><span class="item-text">Європа-Україна</span></span>
                     <span class="item-count" id="pcCountEuUa">0</span>
                 </div>
             </div>
@@ -845,8 +847,8 @@
         <div class="bs-field">
             <label class="bs-label">Напрямок <span class="required">*</span></label>
             <div class="layout-options" id="tfDirectionOptions">
-                <div class="layout-option active" data-dir="ua-eu" onclick="selectTripDir(this)">🇺🇦→🇪🇺</div>
-                <div class="layout-option" data-dir="eu-ua" onclick="selectTripDir(this)">🇪🇺→🇺🇦</div>
+                <div class="layout-option active" data-dir="ua-eu" onclick="selectTripDir(this)" style="font-weight:800;color:#1d4ed8;">UA → EU</div>
+                <div class="layout-option" data-dir="eu-ua" onclick="selectTripDir(this)" style="font-weight:800;color:#047857;">EU → UA</div>
                 <div class="layout-option" data-dir="bt" onclick="selectTripDir(this)">↔ Загальний</div>
             </div>
         </div>
@@ -1195,7 +1197,9 @@ function render() {
 function renderCard(p) {
     const id = p['PAX_ID'] || '';
     const dir = String(p['Напрям'] || '');
-    const dirIcon = dir.includes('Україна') || dir.includes('UА') ? '🇺🇦→🇪🇺' : '🇪🇺→🇺🇦';
+    const isUaEu = dir.includes('Україна') || dir.includes('UА') || dir.includes('UA');
+    const dirLabel = isUaEu ? 'UA → EU' : 'EU → UA';
+    const dirColorClass = isUaEu ? 'dir-badge-ua-eu' : 'dir-badge-eu-ua';
     const phone = p['Телефон пасажира'] || '';
     const seats = p['Кількість місць'] || 1;
     const date = formatTripDate(p['Дата виїзду'] || '');
@@ -1265,7 +1269,7 @@ function renderCard(p) {
                 </div>
                 <div class="card-body">
                     <div class="card-top-row">
-                        <span class="card-direction">${dirIcon}</span>
+                        <span class="card-direction ${dirColorClass}">${dirLabel}</span>
                         <span class="card-phone">${phone}</span>
                         <span class="card-seats">${seats}м</span>
                         <span class="card-date">${date || '—'}</span>
@@ -1304,8 +1308,15 @@ function renderDetailFields(p, fields, isReadonly) {
         const colName = COL_MAP[key] || key;
         const val = p[colName] || '';
         const isRO = READONLY_FIELDS.includes(key) || isReadonly;
-        const displayVal = val || '—';
         const safeVal = String(val).replace(/'/g,"\\'");
+        let displayVal = val || '—';
+        // Direction styled badge
+        if (key === 'direction' && val) {
+            const isUE = val.includes('Україна') || val.includes('UA');
+            const dLabel = isUE ? 'UA → EU' : 'EU → UA';
+            const dCls = isUE ? 'dir-badge-ua-eu' : 'dir-badge-eu-ua';
+            displayVal = `<span class="card-direction ${dCls}" style="font-size:13px;padding:4px 12px;">${dLabel}</span>`;
+        }
         const mapBtn = (ADDRESS_FIELDS.includes(key) && val)
             ? `<button class="detail-micro-btn" onclick="event.stopPropagation(); openMap('${safeVal}')" title="Карта">🗺️</button>`
             : '';
@@ -1429,6 +1440,24 @@ async function saveInline(paxId, key, sheet, newVal) {
     if (!p) return;
     const oldVal = p[colName] || '';
     if (String(newVal) === String(oldVal)) { cancelInline(paxId, key); return; }
+
+    // Direction change → move between sheets
+    if (key === 'direction') {
+        const el = document.getElementById('dv-' + paxId + '-' + key);
+        if (el) el.textContent = newVal || '—';
+        const targetDir = String(newVal).includes('Європа') ? 'eu-ua' : 'ua-eu';
+        showLoader('Зміна напряму...');
+        const res = await apiPost('moveDirection', { pax_id: paxId, target_dir: targetDir });
+        hideLoader();
+        if (res.ok) {
+            showToast('✅ Напрям змінено');
+            silentSync();
+        } else {
+            showToast('❌ ' + (res.error || 'Помилка'));
+            if (el) el.textContent = oldVal || '—';
+        }
+        return;
+    }
 
     p[colName] = newVal;
     const el = document.getElementById('dv-' + paxId + '-' + key);
@@ -1748,6 +1777,10 @@ function setTripDateFilter(val) {
 // ── TRIP CALENDAR WIDGET ──
 let tcalMonth = new Date().getMonth();
 let tcalYear = new Date().getFullYear();
+let tcalClickInside = false;
+document.addEventListener('mousedown', (e) => {
+    if (e.target.closest('.tcal-wrap')) tcalClickInside = true;
+});
 
 function toggleTripCalendar() {
     const dd = document.getElementById('tcalDropdown');
@@ -2565,11 +2598,12 @@ function selectTripDate(dateFormatted) {
         var free = parseInt(t.free_seats) || 0;
         var max = parseInt(t.max_seats) || 0;
         var isFull = free <= 0;
-        var dirIcon = String(t.direction||'').includes('Україна') ? '🇺🇦→🇪🇺' : '🇪🇺→🇺🇦';
+        var dIsUaEu = String(t.direction||'').includes('Україна') || String(t.direction||'').includes('UA');
+        var dirBadge = '<span class="card-direction ' + (dIsUaEu ? 'dir-badge-ua-eu' : 'dir-badge-eu-ua') + '" style="font-size:9px;padding:2px 6px;">' + (dIsUaEu ? 'UA→EU' : 'EU→UA') + '</span>';
         html += '<div class="tm-vehicle-card ' + (isFull ? 'full' : '') + '" id="tm-veh-' + t.cal_id + '" onclick="' + (isFull ? '' : 'selectTripVehicle(\'' + t.cal_id + '\')') + '">' +
             '<div class="tm-vehicle-icon">🚐</div>' +
             '<div class="tm-vehicle-info">' +
-                '<div class="tm-vehicle-name">' + dirIcon + ' ' + (t.auto_name || 'Авто') + '</div>' +
+                '<div class="tm-vehicle-name">' + dirBadge + ' ' + (t.auto_name || 'Авто') + '</div>' +
                 '<div class="tm-vehicle-route">' + (t.city || '—') + '</div>' +
             '</div>' +
             '<div class="tm-vehicle-seats">' +
@@ -2685,11 +2719,12 @@ document.addEventListener('click', (e) => {
     if (!e.target.closest('.bulk-toolbar')) {
         closeBulkTripDd();
     }
-    // Close trip calendar
-    if (!e.target.closest('.tcal-wrap')) {
+    // Close trip calendar (skip if click was inside calendar — target may be detached after re-render)
+    if (!e.target.closest('.tcal-wrap') && !tcalClickInside) {
         const dd = document.getElementById('tcalDropdown');
         if (dd) dd.classList.remove('show');
     }
+    tcalClickInside = false;
 });
 </script>
 </body>
