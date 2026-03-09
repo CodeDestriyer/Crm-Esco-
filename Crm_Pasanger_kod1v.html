@@ -230,12 +230,12 @@
         /* Card actions */
         .card-actions { display: none; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 0 12px; background: white; }
         .card-actions.show { display: grid; padding: 10px 12px; border-top: 1px solid var(--border); }
-        .btn-card-action.btn-write { background: #dbeafe; color: #1d4ed8; position: relative; }
+        .btn-card-action.btn-write { background: #dbeafe; color: #1d4ed8; }
         .btn-card-action.btn-write:hover { background: #1d4ed8; color: white; }
         .btn-card-action.btn-edit { background: #fef3c7; color: #92400e; }
         .btn-card-action.btn-edit:hover { background: #f59e0b; color: white; }
-        .messenger-menu { display: none; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 6px; background: white; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); padding: 4px; z-index: 50; min-width: 140px; }
-        .messenger-menu.show { display: block; }
+        .messenger-menu { display: none; position: absolute; bottom: calc(100% + 4px); left: 0; right: 0; background: white; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 -4px 20px rgba(0,0,0,0.15); padding: 6px; z-index: 50; grid-template-columns: repeat(2, 1fr); gap: 4px; }
+        .messenger-menu.show { display: grid; }
         .messenger-menu-item { display: block; width: 100%; padding: 8px 12px; border: none; background: none; cursor: pointer; font-size: 11px; font-weight: 600; font-family: inherit; text-align: left; border-radius: 6px; transition: background 0.15s; white-space: nowrap; }
         .messenger-menu-item:hover { background: var(--bg-main); }
         .btn-card-action { padding: 10px 6px; border: none; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 4px; }
@@ -1412,19 +1412,17 @@ function renderCard(p) {
             ${tripStrip}
         </div>
         <div class="card-details ${isOpen?'show':''}" id="details-${id}">${isOpen ? renderDetails(p) : ''}</div>
-        <div class="card-actions ${isActionsOpen?'show':''}" id="actions-${id}">
+        <div class="card-actions ${isActionsOpen?'show':''}" id="actions-${id}" style="position:relative;">
             <button class="btn-card-action btn-call" onclick="window.open('tel:${phone}')">📞 Дзвінок</button>
-            <button class="btn-card-action btn-write" onclick="event.stopPropagation(); toggleMessengerMenu('${id}')">
-                ✉️ Писати
-                <div class="messenger-menu" id="msgMenu-${id}">
-                    <button class="messenger-menu-item" onclick="event.stopPropagation(); openMessenger('viber','${phone}')">💬 Viber</button>
-                    <button class="messenger-menu-item" onclick="event.stopPropagation(); openMessenger('telegram','${phone}')">✈️ Telegram</button>
-                    <button class="messenger-menu-item" onclick="event.stopPropagation(); openMessenger('whatsapp','${phone}')">📱 WhatsApp</button>
-                    <button class="messenger-menu-item" onclick="event.stopPropagation(); openMessenger('smartsender','${smartId}')">🤖 SmartSender</button>
-                </div>
-            </button>
+            <button class="btn-card-action btn-write" onclick="event.stopPropagation(); toggleMessengerMenu('${id}')">✉️ Писати</button>
             <button class="btn-card-action btn-edit" onclick="event.stopPropagation(); openEditPax('${id}')">✏️ Редагувати</button>
             <button class="btn-card-action btn-delete" onclick="deletePax('${id}','${p._sheet||''}','${name}')">🗑️ Видалити</button>
+            <div class="messenger-menu" id="msgMenu-${id}">
+                <button class="messenger-menu-item" onclick="event.stopPropagation(); openMessenger('viber','${phone}')">💬 Viber</button>
+                <button class="messenger-menu-item" onclick="event.stopPropagation(); openMessenger('telegram','${phone}')">✈️ Telegram</button>
+                <button class="messenger-menu-item" onclick="event.stopPropagation(); openMessenger('whatsapp','${phone}')">📱 WhatsApp</button>
+                <button class="messenger-menu-item" onclick="event.stopPropagation(); openMessenger('smartsender','${smartId}')">🤖 SmartSender</button>
+            </div>
         </div>
     </div>`;
 }
