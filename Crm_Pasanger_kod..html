@@ -692,8 +692,21 @@
         .card-actions-toggle.open { background: var(--primary); color: white; transform: rotate(180deg); }
         
         /* Details panel */
-        .card-details { display: none; padding: 12px; background: #f8fafc; border-top: 1px solid var(--border); }
+        .card-details { display: none; padding: 0; background: #f8fafc; border-top: 1px solid var(--border); }
         .card-details.show { display: block; }
+
+        /* Accordion sections */
+        .detail-accordion { border-bottom: 1px solid var(--border); }
+        .detail-accordion:last-child { border-bottom: none; }
+        .detail-section-btn { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 12px; background: none; border: none; cursor: pointer; font-size: 12px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.3px; transition: background 0.15s; }
+        .detail-section-btn:hover { background: #eef2ff; }
+        .detail-section-btn .acc-icon { font-size: 10px; transition: transform 0.2s; color: var(--text-secondary); }
+        .detail-section-btn.open .acc-icon { transform: rotate(90deg); }
+        .detail-section-btn .acc-title { flex: 1; text-align: left; }
+        .detail-section-btn .acc-count { font-size: 9px; font-weight: 600; color: var(--text-secondary); background: var(--bg-secondary, #f1f5f9); padding: 1px 6px; border-radius: 8px; }
+        .detail-section-content { display: none; padding: 0 12px 12px; }
+        .detail-section-content.open { display: block; }
+
         .details-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
         .detail-item { background: white; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); }
         .detail-label { display: block; font-size: 10px; color: var(--text-secondary); margin-bottom: 2px; }
@@ -1998,9 +2011,10 @@
     <div class="modal" style="max-width:350px">
         <div class="modal-header"><span class="modal-title">⚙️ Колонки</span><button class="modal-close" onclick="closeModal('columnsModal')">×</button></div>
         <div class="modal-body">
-            <div class="columns-hint">Якщо в заголовку — не в деталях</div>
-            <div class="columns-section"><div class="columns-section-title">Заголовок</div><div class="columns-list" id="headerColList"></div></div>
-            <div class="columns-section"><div class="columns-section-title">Деталі</div><div class="columns-list" id="detailsColList"></div></div>
+            <div class="columns-hint">Заголовок — видно на картці. Основне — розгорнуте при натисканні. Деталі — згорнуте.</div>
+            <div class="columns-section"><div class="columns-section-title">📋 Заголовок картки</div><div class="columns-list" id="headerColList"></div></div>
+            <div class="columns-section"><div class="columns-section-title">👤 Основне (розгорнуте)</div><div class="columns-list" id="osnovneColList"></div></div>
+            <div class="columns-section"><div class="columns-section-title">📂 Деталі (згорнуте)</div><div class="columns-list" id="detailsColList"></div></div>
         </div>
         <div class="modal-footer" style="display:flex;gap:8px;">
             <button class="btn-secondary" onclick="resetColumnsSettings()" style="flex:1;">🔄 Скинути</button>
@@ -2224,7 +2238,7 @@ const ALL_COLUMNS = {
     smartId:{label:'Ід_смарт/CRM',group:'details'}
 };
 
-let colSettings = {header:['name','phone','seats','from','to','date','price'],details:['deposit','payStatus','payForm','currency','phoneReg','timing','weight','weightPrice','leadStatus','crmStatus']};
+let colSettings = {header:['name','phone','seats','from','to','date','price'],osnovne:['name','phone','phoneReg','date','seats','from','to','price','deposit','payStatus'],details:['deposit','payStatus','payForm','currency','phoneReg','timing','weight','weightPrice','leadStatus','crmStatus']};
 let passengers = [
     // Дані будуть завантажені з API при ініціалізації
 ];
@@ -2438,7 +2452,7 @@ function playNotificationSound() {
     }
 }
 
-function loadSettings() { try { const s = JSON.parse(localStorage.getItem('escoCrmV18')||'{}'); if(s.colSettings)colSettings=s.colSettings; if(s.lastTab)lastTab=s.lastTab; } catch(e){} }
+function loadSettings() { try { const s = JSON.parse(localStorage.getItem('escoCrmV18')||'{}'); if(s.colSettings){ colSettings=s.colSettings; if(!colSettings.osnovne) colSettings.osnovne=['name','phone','phoneReg','date','seats','from','to','price','deposit','payStatus']; } if(s.lastTab)lastTab=s.lastTab; } catch(e){} }
 function saveSettings() { localStorage.setItem('escoCrmV18', JSON.stringify({colSettings,lastTab})); }
 
 // SIDE MENU
@@ -3093,23 +3107,48 @@ function render() {
             return `<span class="card-extra-field copyable" onclick="event.stopPropagation();copyField(this)" onmousedown="event.stopPropagation()"><span class="card-extra-label">${ALL_COLUMNS[k]?.label || k}:</span> ${valHtml}</span>`;
         }).join('') + '</div>' : '';
 
-        // Details blocks з підсвічуванням + edit/copy кнопки + кольорові бейджі
-        const detailsHtml = detailCols.map(k => {
-            let rawVal = getFieldValue(p, k);
-            let displayVal = rawVal;
-            if (hasSearch && displayVal) displayVal = highlightSearch(displayVal);
-            // Кольоровий бейдж для полів з варіантами
-            const colorInfo = FIELD_COLORS[k]?.[rawVal];
-            if (colorInfo && rawVal) {
-                displayVal = `<span class="field-badge" style="background:${colorInfo.bg};color:${colorInfo.color}">${displayVal || rawVal}</span>`;
-            }
-            return `<div class="detail-block">
-                <div class="detail-block-actions">
-                    <button class="detail-micro-btn" title="Копіювати" onclick="event.stopPropagation();copyDetailValue('${uniqueKey}','${k}')">⧉</button>
-                    <button class="detail-micro-btn" title="Редагувати" onclick="event.stopPropagation();inlineEditField('${uniqueKey}','${k}',this)">✎</button>
+        // Details blocks — accordion sections
+        function buildFieldBlocks(fields, uKey, searchTerm) {
+            return fields.map(k => {
+                let rawVal = getFieldValue(p, k);
+                let displayVal = rawVal;
+                if (searchTerm && displayVal) displayVal = highlightSearch(displayVal);
+                const colorInfo = FIELD_COLORS[k]?.[rawVal];
+                if (colorInfo && rawVal) {
+                    displayVal = `<span class="field-badge" style="background:${colorInfo.bg};color:${colorInfo.color}">${displayVal || rawVal}</span>`;
+                }
+                return `<div class="detail-block">
+                    <div class="detail-block-actions">
+                        <button class="detail-micro-btn" title="Копіювати" onclick="event.stopPropagation();copyDetailValue('${uKey}','${k}')">⧉</button>
+                        <button class="detail-micro-btn" title="Редагувати" onclick="event.stopPropagation();inlineEditField('${uKey}','${k}',this)">✎</button>
+                    </div>
+                    <div class="detail-block-label">${ALL_COLUMNS[k]?.label || k}</div>
+                    <div class="detail-block-value ${!rawVal ? 'empty' : ''}" data-field="${k}">${displayVal || '—'}</div>
+                </div>`;
+            }).join('');
+        }
+
+        const osnovneFields = colSettings.osnovne || [];
+        const accSections = [
+            { key:'osnovne', title:'👤 Основне', fields: osnovneFields, openByDefault: true },
+            { key:'finance', title:'💰 Фінанси', fields: detailCols.filter(k => ['price','currency','deposit','payStatus','payForm','weight','weightPrice'].includes(k)) },
+            { key:'route', title:'🗺️ Маршрут', fields: detailCols.filter(k => ['from','to','timing','vehicle','seatInCar','rteId'].includes(k)) },
+            { key:'statuses', title:'📊 Статуси', fields: detailCols.filter(k => ['leadStatus','crmStatus'].includes(k)) },
+            { key:'other', title:'📝 Інше', fields: detailCols.filter(k => !osnovneFields.includes(k) && !['price','currency','deposit','payStatus','payForm','weight','weightPrice','from','to','timing','vehicle','seatInCar','rteId','leadStatus','crmStatus'].includes(k)) }
+        ].filter(s => s.fields.length > 0);
+
+        const detailsHtml = accSections.map(sec => {
+            const secId = `acc-${uniqueKey}-${sec.key}`;
+            const isOpen = sec.openByDefault;
+            return `<div class="detail-accordion">
+                <button class="detail-section-btn ${isOpen?'open':''}" onclick="event.stopPropagation(); toggleAccSection('${secId}', this)">
+                    <span class="acc-icon">›</span>
+                    <span class="acc-title">${sec.title}</span>
+                    <span class="acc-count">${sec.fields.length}</span>
+                </button>
+                <div class="detail-section-content ${isOpen?'open':''}" id="${secId}" data-fields="${sec.fields.join(',')}" data-uid="${uniqueKey}">
+                    ${isOpen ? '<div class="details-grid">' + buildFieldBlocks(sec.fields, uniqueKey, hasSearch) + '</div>' : ''}
                 </div>
-                <div class="detail-block-label">${ALL_COLUMNS[k]?.label || k}</div>
-                <div class="detail-block-value ${!rawVal ? 'empty' : ''}" data-field="${k}">${displayVal || '—'}</div>
             </div>`;
         }).join('');
         
@@ -3156,7 +3195,7 @@ function render() {
                 </div>
             </div>
             <div class="card-details ${dOpen ? 'show' : ''}">
-                <div class="details-grid">${detailsHtml || '<div style="text-align:center;color:var(--text-secondary);font-size:11px;">Немає додаткової інформації</div>'}</div>
+                ${detailsHtml || '<div style="text-align:center;color:var(--text-secondary);font-size:11px;padding:12px;">Немає додаткової інформації</div>'}
             </div>
             <div class="card-actions ${aOpen ? 'show' : ''}">
                 <button class="btn-card-action btn-call" onclick="event.stopPropagation();location.href='tel:${p.phone}'">📞 Дзвонити</button>
@@ -3231,6 +3270,46 @@ function toggleDetails(uid) {
     openDetailsId = openDetailsId === uid ? null : uid;
     document.querySelector(`[data-uid="${uid}"] .card-details`)?.classList.toggle('show', openDetailsId === uid);
     document.querySelector(`[data-uid="${uid}"] .new-tag`)?.remove();
+}
+
+function toggleAccSection(secId, btn) {
+    const content = document.getElementById(secId);
+    if (!content) return;
+    const isOpen = content.classList.contains('open');
+    if (isOpen) {
+        content.classList.remove('open');
+        btn.classList.remove('open');
+    } else {
+        content.classList.add('open');
+        btn.classList.add('open');
+        // Lazy-load: рендеримо контент лише при першому відкритті
+        if (!content.innerHTML.trim()) {
+            const fields = content.dataset.fields ? content.dataset.fields.split(',') : [];
+            const uid = content.dataset.uid;
+            const p = findPassengerByUid(uid);
+            if (p && fields.length) {
+                const hasSearch = filters.search && filters.search.trim();
+                const blocksHtml = fields.map(k => {
+                    let rawVal = getFieldValue(p, k);
+                    let displayVal = rawVal;
+                    if (hasSearch && displayVal) displayVal = highlightSearch(displayVal);
+                    const colorInfo = FIELD_COLORS[k]?.[rawVal];
+                    if (colorInfo && rawVal) {
+                        displayVal = `<span class="field-badge" style="background:${colorInfo.bg};color:${colorInfo.color}">${displayVal || rawVal}</span>`;
+                    }
+                    return `<div class="detail-block">
+                        <div class="detail-block-actions">
+                            <button class="detail-micro-btn" title="Копіювати" onclick="event.stopPropagation();copyDetailValue('${uid}','${k}')">⧉</button>
+                            <button class="detail-micro-btn" title="Редагувати" onclick="event.stopPropagation();inlineEditField('${uid}','${k}',this)">✎</button>
+                        </div>
+                        <div class="detail-block-label">${ALL_COLUMNS[k]?.label || k}</div>
+                        <div class="detail-block-value ${!rawVal ? 'empty' : ''}" data-field="${k}">${displayVal || '—'}</div>
+                    </div>`;
+                }).join('');
+                content.innerHTML = '<div class="details-grid">' + blocksHtml + '</div>';
+            }
+        }
+    }
 }
 
 function toggleActions(uid) {
@@ -6140,36 +6219,48 @@ function savePassenger() {
 
 // COLUMNS
 function openColumnsModal() { renderColumnsList(); document.getElementById('columnsModal').classList.add('show'); }
-function renderColumnsList() { 
-    const keys = Object.keys(ALL_COLUMNS); 
-    document.getElementById('headerColList').innerHTML = keys.map(k => 
+function renderColumnsList() {
+    const keys = Object.keys(ALL_COLUMNS);
+    document.getElementById('headerColList').innerHTML = keys.map(k =>
         `<div class="column-item" onclick="toggleHeaderCol('${k}')">
             <input type="checkbox" ${colSettings.header.includes(k)?'checked':''} onclick="event.stopPropagation();toggleHeaderCol('${k}')">
             <label>${ALL_COLUMNS[k].label}</label>
         </div>`
-    ).join(''); 
-    document.getElementById('detailsColList').innerHTML = keys.map(k => { 
-        const inH = colSettings.header.includes(k); 
+    ).join('');
+    document.getElementById('osnovneColList').innerHTML = keys.map(k =>
+        `<div class="column-item" onclick="toggleOsnovneCol('${k}')">
+            <input type="checkbox" ${colSettings.osnovne.includes(k)?'checked':''} onclick="event.stopPropagation();toggleOsnovneCol('${k}')">
+            <label>${ALL_COLUMNS[k].label}</label>
+        </div>`
+    ).join('');
+    document.getElementById('detailsColList').innerHTML = keys.map(k => {
+        const inH = colSettings.header.includes(k);
         return `<div class="column-item ${inH?'disabled':''}" onclick="${inH?'':`toggleDetailsCol('${k}')`}">
             <input type="checkbox" ${colSettings.details.includes(k)&&!inH?'checked':''} ${inH?'disabled':''} onclick="event.stopPropagation();${inH?'':`toggleDetailsCol('${k}')`}">
             <label>${ALL_COLUMNS[k].label}${inH?' (заг)':''}</label>
-        </div>`; 
-    }).join(''); 
+        </div>`;
+    }).join('');
 }
-function toggleHeaderCol(k) { 
-    const i = colSettings.header.indexOf(k); 
-    i !== -1 ? colSettings.header.splice(i,1) : colSettings.header.push(k); 
-    renderColumnsList(); 
+function toggleHeaderCol(k) {
+    const i = colSettings.header.indexOf(k);
+    i !== -1 ? colSettings.header.splice(i,1) : colSettings.header.push(k);
+    renderColumnsList();
 }
-function toggleDetailsCol(k) { 
-    if(colSettings.header.includes(k)) return; 
-    const i = colSettings.details.indexOf(k); 
-    i === -1 ? colSettings.details.push(k) : colSettings.details.splice(i,1); 
-    renderColumnsList(); 
+function toggleOsnovneCol(k) {
+    const i = colSettings.osnovne.indexOf(k);
+    i !== -1 ? colSettings.osnovne.splice(i,1) : colSettings.osnovne.push(k);
+    renderColumnsList();
+}
+function toggleDetailsCol(k) {
+    if(colSettings.header.includes(k)) return;
+    const i = colSettings.details.indexOf(k);
+    i === -1 ? colSettings.details.push(k) : colSettings.details.splice(i,1);
+    renderColumnsList();
 }
 function resetColumnsSettings() {
     colSettings = {
         header: ['name','phone','seats','from','to','date','price'],
+        osnovne: ['name','phone','phoneReg','date','seats','from','to','price','deposit','payStatus'],
         details: ['deposit','payStatus','payForm','currency','phoneReg','timing','weight','weightPrice','leadStatus','crmStatus']
     };
     renderColumnsList();
