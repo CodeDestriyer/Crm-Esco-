@@ -630,8 +630,12 @@
                 <div class="form-group"><label>Тел. реєстратора</label><input type="tel" id="fPhoneReg"></div>
             </div>
             <div class="form-row">
-                <div class="form-group"><label>Дата виїзду</label><input type="date" id="fDate"></div>
+                <div class="form-group"><label>Дата виїзду</label><input type="date" id="fDate" onchange="onDateChanged()"></div>
                 <div class="form-group"><label>Місць</label><input type="number" id="fSeats" value="1" min="1"></div>
+            </div>
+            <div id="tripSuggestPanel" style="display:none; background:#fffbeb; border:1px solid #f59e0b; border-radius:8px; padding:10px; margin-bottom:8px;">
+                <div style="font-size:10px; font-weight:700; color:#d97706; text-transform:uppercase; margin-bottom:6px;">🚐 Знайдені рейси на цю дату</div>
+                <div id="tripSuggestList"></div>
             </div>
             <div class="form-group"><label>Адреса відправки</label><input type="text" id="fFrom"></div>
             <div class="form-group"><label>Адреса прибуття</label><input type="text" id="fTo"></div>
@@ -1068,6 +1072,8 @@ function renderCard(p) {
 // ================================================================
 function renderDetails(p) {
     let html = '';
+    const ADDRESS_FIELDS = ['from','to'];
+
     DETAIL_SECTIONS.forEach(section => {
         html += `<div class="detail-section-title">${section.title}</div><div class="details-grid">`;
         section.fields.forEach(key => {
@@ -1075,19 +1081,30 @@ function renderDetails(p) {
             const val = p[colName] || '';
             const isRO = READONLY_FIELDS.includes(key) || section.readonly;
             const displayVal = val || '—';
+            const safeVal = String(val).replace(/'/g,"\\'");
+
+            // Map button for address fields
+            const mapBtn = (ADDRESS_FIELDS.includes(key) && val)
+                ? `<button class="detail-micro-btn" onclick="event.stopPropagation(); openMap('${safeVal}')" title="Карта">🗺️</button>`
+                : '';
 
             html += `<div class="detail-block">
                 <div class="detail-block-label">${colName}</div>
                 <div class="detail-block-value ${val?'':'empty'}" id="dv-${p['PAX_ID']}-${key}">${displayVal}</div>
                 ${!isRO ? `<div class="detail-block-actions">
                     <button class="detail-micro-btn" onclick="event.stopPropagation(); startInlineEdit('${p['PAX_ID']}','${key}','${p._sheet||''}')">✏️</button>
-                    <button class="detail-micro-btn" onclick="event.stopPropagation(); copyToClipboard('${String(val).replace(/'/g,"\\'")}')">📋</button>
-                </div>` : `<div class="detail-block-actions"><button class="detail-micro-btn" onclick="event.stopPropagation(); copyToClipboard('${String(val).replace(/'/g,"\\'")}')">📋</button></div>`}
+                    ${mapBtn}
+                    <button class="detail-micro-btn" onclick="event.stopPropagation(); copyToClipboard('${safeVal}')">📋</button>
+                </div>` : `<div class="detail-block-actions">${mapBtn}<button class="detail-micro-btn" onclick="event.stopPropagation(); copyToClipboard('${safeVal}')">📋</button></div>`}
             </div>`;
         });
         html += '</div>';
     });
     return html;
+}
+
+function openMap(address) {
+    window.open('https://www.google.com/maps/search/' + encodeURIComponent(address), '_blank');
 }
 
 function toggleDetails(id) {
@@ -1180,6 +1197,58 @@ function openAddModal() {
     openModal('passengerModal');
 }
 
+// Trip suggest when date changes in add form
+let selectedFormCalId = '';
+
+async function onDateChanged() {
+    const date = document.getElementById('fDate').value;
+    const panel = document.getElementById('tripSuggestPanel');
+    const list = document.getElementById('tripSuggestList');
+    selectedFormCalId = '';
+
+    if (!date) { panel.style.display = 'none'; return; }
+
+    // Convert yyyy-mm-dd to dd.mm.yyyy
+    const parts = date.split('-');
+    const dateFormatted = parts[2] + '.' + parts[1] + '.' + parts[0];
+
+    const dirSel = document.getElementById('fDirection').value;
+    const dirText = dirSel === 'eu-ua' ? 'Європа-УК' : 'Україна-ЄВ';
+
+    // Find matching trips from local data
+    const matching = trips.filter(t => {
+        if (t.status === 'Архів' || t.status === 'Виконано') return false;
+        if (String(t.date).trim() !== dateFormatted) return false;
+        const tDir = String(t.direction || '').toLowerCase();
+        if (dirSel === 'ua-eu' && !tDir.match(/ук|ua|україна/)) return false;
+        if (dirSel === 'eu-ua' && !tDir.match(/єв|eu|європа/)) return false;
+        return true;
+    });
+
+    if (matching.length === 0) {
+        panel.style.display = 'none';
+        return;
+    }
+
+    panel.style.display = 'block';
+    list.innerHTML = matching.map(t => {
+        const free = parseInt(t.free_seats) || 0;
+        const dirIcon = String(t.direction||'').includes('Україна') ? '🇺🇦→🇪🇺' : '🇪🇺→🇺🇦';
+        return `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:white;border-radius:6px;margin-bottom:4px;cursor:pointer;border:2px solid ${selectedFormCalId===t.cal_id?'var(--orange)':'transparent'};" onclick="selectFormTrip('${t.cal_id}',this)">
+            <span>${dirIcon}</span>
+            <span style="font-size:12px;font-weight:700;flex:1;">${t.city||'—'} — ${t.auto_name||''}</span>
+            <span style="font-size:10px;color:${free>0?'var(--success)':'var(--danger)'};font-weight:700;">${free} вільн.</span>
+        </div>`;
+    }).join('');
+}
+
+function selectFormTrip(calId, el) {
+    selectedFormCalId = calId;
+    // Highlight selected
+    el.parentElement.querySelectorAll('div').forEach(d => d.style.borderColor = 'transparent');
+    el.style.borderColor = 'var(--orange)';
+}
+
 async function savePassenger() {
     const name = document.getElementById('fName').value.trim();
     const phone = document.getElementById('fPhone').value.trim();
@@ -1222,12 +1291,21 @@ async function savePassenger() {
             note: document.getElementById('fNote').value.trim()
         }
     });
-    hideLoader();
     if (res.ok) {
-        showToast('✅ Пасажир додано: ' + res.pax_id);
+        // Якщо менеджер обрав рейс з suggest панелі — призначаємо
+        if (selectedFormCalId) {
+            await apiPost('assignTrip', { cal_id: selectedFormCalId, pax_ids: [res.pax_id] });
+            hideLoader();
+            showToast('✅ Пасажир додано + призначено рейс');
+        } else {
+            hideLoader();
+            showToast('✅ Пасажир додано: ' + res.pax_id);
+        }
+        selectedFormCalId = '';
         closeModal('passengerModal');
         silentSync();
     } else {
+        hideLoader();
         showToast('❌ ' + (res.error || 'Помилка'));
     }
 }
