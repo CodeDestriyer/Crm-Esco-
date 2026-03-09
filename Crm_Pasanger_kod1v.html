@@ -228,8 +228,8 @@
         select.detail-inline-edit { padding: 3px 4px; cursor: pointer; appearance: auto; }
 
         /* Card actions */
-        .card-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; max-height: 0; overflow: hidden; padding: 0 12px; background: white; transition: max-height 0.25s ease, padding 0.25s ease; }
-        .card-actions.show { max-height: 300px; padding: 10px 12px; border-top: 1px solid var(--border); }
+        .card-actions { display: none; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 0 12px; background: white; }
+        .card-actions.show { display: grid; padding: 10px 12px; border-top: 1px solid var(--border); }
         .btn-card-action.btn-write { background: #dbeafe; color: #1d4ed8; position: relative; }
         .btn-card-action.btn-write:hover { background: #1d4ed8; color: white; }
         .btn-card-action.btn-edit { background: #fef3c7; color: #92400e; }
