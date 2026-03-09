@@ -1652,6 +1652,7 @@ async function deletePax(paxId, sheet, name) {
 function renderTrips() {
     const grid = document.getElementById('tripsGrid');
     if (!grid) return;
+    autoColorMap = {};
     const filtered = getFilteredTrips();
 
     if (filtered.length === 0) {
@@ -1713,6 +1714,28 @@ function getFilteredTrips() {
     });
 }
 
+const AUTO_COLORS = [
+    { bg: '#ede9fe', color: '#5b21b6' },
+    { bg: '#fce7f3', color: '#9d174d' },
+    { bg: '#dbeafe', color: '#1e40af' },
+    { bg: '#d1fae5', color: '#065f46' },
+    { bg: '#fef3c7', color: '#92400e' },
+    { bg: '#ffe4e6', color: '#9f1239' },
+    { bg: '#e0f2fe', color: '#075985' },
+    { bg: '#f0fdf4', color: '#166534' },
+    { bg: '#fdf4ff', color: '#86198f' },
+    { bg: '#ecfdf5', color: '#047857' },
+];
+let autoColorMap = {};
+
+function getAutoColor(name) {
+    if (!name) return AUTO_COLORS[0];
+    if (autoColorMap[name]) return autoColorMap[name];
+    const idx = Object.keys(autoColorMap).length % AUTO_COLORS.length;
+    autoColorMap[name] = AUTO_COLORS[idx];
+    return autoColorMap[name];
+}
+
 function renderTripCard(t) {
     const maxS = parseInt(t.max_seats) || 0;
     const occ = parseInt(t.occupied) || 0;
@@ -1729,6 +1752,7 @@ function renderTripCard(t) {
     const safeDate = String(t.date || '').replace(/'/g, "\\'");
     const noCalId = !t.cal_id || !String(t.cal_id).trim();
     const autoName = cleanAutoName(t.auto_name);
+    const autoClr = getAutoColor(autoName);
 
     return `<div class="trip-card ${cardDirClass} ${noCalId ? 'trip-no-id' : ''}">
         <div class="trip-card-header">
@@ -1741,7 +1765,7 @@ function renderTripCard(t) {
                 <span class="trip-card-tag date">${formatTripDate(t.date)}</span>
             </div>
             <div class="trip-card-meta" style="margin-top:4px;">
-                <span class="trip-card-tag auto">${autoName || '—'}</span>
+                <span class="trip-card-tag auto" style="background:${autoClr.bg};color:${autoClr.color};">${autoName || '—'}</span>
             </div>
             ${noCalId ? '<div style="color:#dc2626;font-size:10px;font-weight:700;margin-top:4px;">CAL_ID порожній — видалення неможливе</div>' : ''}
         </div>
@@ -1811,11 +1835,12 @@ function getTripDateMap() {
         if (t.status === 'Архів' || t.status === 'Виконано') return;
         const fd = formatTripDate(t.date);
         if (!fd || fd === '—') return;
-        if (!map[fd]) map[fd] = { uaeu: 0, euua: 0, pax: 0 };
+        if (!map[fd]) map[fd] = { uaeu: 0, euua: 0, pax: 0, maxSeats: 0 };
         const dir = getTripDirection(t);
         if (dir === 'ua-eu') map[fd].uaeu++;
         else if (dir === 'eu-ua') map[fd].euua++;
         map[fd].pax += (parseInt(t.occupied) || 0);
+        map[fd].maxSeats += (parseInt(t.max_seats) || 0);
     });
     return map;
 }
@@ -1904,13 +1929,13 @@ function renderCalDay(d, key, info, otherMonth, isToday, selectedKey) {
         } else if (info.euua > 0) {
             dotsHtml = '<span class="dot-eu-ua"></span>';
         }
-        if (info.pax > 0) paxHtml = `<span class="tcal-pax">${info.pax}</span>`;
+        paxHtml = `<span class="tcal-pax">${info.pax}</span>`;
     }
 
     const onclick = hasTrip ? ` onclick="tcalSelectDate('${key}')"` : '';
     return `<button class="${cls}"${onclick}>
         <span>${d}</span>
-        ${dotsHtml || paxHtml ? `<div class="tcal-dots">${dotsHtml}</div>` : ''}
+        ${dotsHtml ? `<div class="tcal-dots">${dotsHtml}</div>` : ''}
         ${paxHtml}
     </button>`;
 }
