@@ -1021,9 +1021,9 @@ const SELECT_OPTIONS = {
     direction: ['Україна-ЄВ','Європа-УК']
 };
 const LAYOUTS = {
-    '1-3-3': ['V1','A1','A2','A3','B1','B2','B3'],
-    '2-2-3': ['A1','A2','B1','B2','C1','C2','C3'],
-    '2-2-2': ['A1','A2','B1','B2','C1','C2']
+    '1-3-3': ['D','1','2','3','4','5','6','7'],
+    '2-2-3': ['D','1','2','3','4','5','6','7'],
+    '2-2-2': ['D','1','2','3','4','5','6']
 };
 
 // ================================================================
@@ -2139,7 +2139,8 @@ function selectLayout(el, idx) {
     el.parentElement.querySelectorAll('.layout-option').forEach(o => o.classList.remove('active'));
     el.classList.add('active');
     const layout = el.dataset.layout;
-    const seats = layout === 'bus' ? 20 : (LAYOUTS[layout] || []).length;
+    const all = LAYOUTS[layout] || [];
+    const seats = layout === 'bus' ? 20 : all.filter(s => s !== 'D').length;
     document.getElementById('vbSeats-' + idx).textContent = seats;
     updateSeatPreview(idx);
 }
@@ -2167,12 +2168,12 @@ function updateSeatPreview(idx) {
     } else {
         seatNames = (LAYOUTS[layout] || []).slice(0, seats);
     }
-    if (hasReserve) seatNames.push('R1');
+    if (hasReserve) seatNames.push('8');
 
-    const cols = layout === '1-3-3' ? 4 : layout === '2-2-3' ? 3 : layout === '2-2-2' ? 3 : Math.min(seats, 5);
+    const cols = layout === '1-3-3' ? 4 : layout === '2-2-3' ? 5 : layout === '2-2-2' ? 5 : Math.min(seats, 5);
     container.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
     container.innerHTML = seatNames.map(s => {
-        const cls = s === 'V1' ? 'driver' : s === 'R1' ? 'reserve' : '';
+        const cls = s === 'D' ? 'driver' : '';
         return `<div class="seat-preview-item ${cls}">${s}</div>`;
     }).join('');
 }
@@ -2230,7 +2231,7 @@ function getOccupiedSeats(calId, excludePaxId) {
     return map;
 }
 
-function getSeatRows(layout, maxSeats) {
+function getSeatRows(layout, maxSeats, hasReserve) {
     if (layout === 'bus') {
         const rows = [];
         for (let i = 1; i <= maxSeats; i += 4) {
@@ -2244,32 +2245,49 @@ function getSeatRows(layout, maxSeats) {
         }
         return rows;
     }
-    if (layout === '1-3-3') {
-        return [
-            [{ name: 'V1', type: 'driver' }, { type: 'empty' }, { type: 'aisle' }, { type: 'empty' }],
-            [{ name: 'A1', type: 'seat' }, { name: 'A2', type: 'seat' }, { type: 'aisle' }, { name: 'A3', type: 'seat' }],
-            [{ name: 'B1', type: 'seat' }, { name: 'B2', type: 'seat' }, { type: 'aisle' }, { name: 'B3', type: 'seat' }]
-        ];
-    }
+
+    // 2-2-3: 4 columns, 3 rows
+    // Front: D  2  |  4  7
+    // Mid:   _  _  |  _  6
+    // Back:  8  1  |  3  5
     if (layout === '2-2-3') {
-        return [
-            [{ name: 'A1', type: 'seat' }, { type: 'aisle' }, { name: 'A2', type: 'seat' }],
-            [{ name: 'B1', type: 'seat' }, { type: 'aisle' }, { name: 'B2', type: 'seat' }],
-            [{ name: 'C1', type: 'seat' }, { name: 'C2', type: 'seat' }, { name: 'C3', type: 'seat' }]
+        const rows = [
+            [{ name: 'D', type: 'driver' }, { name: '2', type: 'seat' }, { type: 'aisle' }, { name: '4', type: 'seat' }, { name: '7', type: 'seat' }],
+            [{ type: 'empty' }, { type: 'empty' }, { type: 'aisle' }, { type: 'empty' }, { name: '6', type: 'seat' }],
+            [hasReserve ? { name: '8', type: 'seat' } : { type: 'empty' }, { name: '1', type: 'seat' }, { type: 'aisle' }, { name: '3', type: 'seat' }, { name: '5', type: 'seat' }]
         ];
+        return rows;
     }
+
+    // 1-3-3: 3 columns, 3 rows
+    // Front: D  |  3  6
+    // Mid:   7  |  2  5
+    // Back:  8  |  1  4
+    if (layout === '1-3-3') {
+        const rows = [
+            [{ name: 'D', type: 'driver' }, { type: 'aisle' }, { name: '3', type: 'seat' }, { name: '6', type: 'seat' }],
+            [{ name: '7', type: 'seat' }, { type: 'aisle' }, { name: '2', type: 'seat' }, { name: '5', type: 'seat' }],
+            [hasReserve ? { name: '8', type: 'seat' } : { type: 'empty' }, { type: 'aisle' }, { name: '1', type: 'seat' }, { name: '4', type: 'seat' }]
+        ];
+        return rows;
+    }
+
+    // 2-2-2: 4 columns, 2 rows
+    // Front: D  2  |  4  6
+    // Back:  8  1  |  3  5
     if (layout === '2-2-2') {
-        return [
-            [{ name: 'A1', type: 'seat' }, { type: 'aisle' }, { name: 'A2', type: 'seat' }],
-            [{ name: 'B1', type: 'seat' }, { type: 'aisle' }, { name: 'B2', type: 'seat' }],
-            [{ name: 'C1', type: 'seat' }, { type: 'aisle' }, { name: 'C2', type: 'seat' }]
+        const rows = [
+            [{ name: 'D', type: 'driver' }, { name: '2', type: 'seat' }, { type: 'aisle' }, { name: '4', type: 'seat' }, { name: '6', type: 'seat' }],
+            [hasReserve ? { name: '8', type: 'seat' } : { type: 'empty' }, { name: '1', type: 'seat' }, { type: 'aisle' }, { name: '3', type: 'seat' }, { name: '5', type: 'seat' }]
         ];
+        return rows;
     }
+
     // Generic fallback
     const names = (LAYOUTS[layout] || []).slice(0, maxSeats);
     const rows = [];
     for (let i = 0; i < names.length; i += 3) {
-        rows.push(names.slice(i, i + 3).map(s => ({ name: s, type: s === 'V1' ? 'driver' : 'seat' })));
+        rows.push(names.slice(i, i + 3).map(s => ({ name: s, type: s === 'D' ? 'driver' : 'seat' })));
     }
     return rows;
 }
@@ -2292,19 +2310,13 @@ function buildSeatHtml(seatObj, occupiedMap) {
     return `<div class="sp-seat sp-free" onclick="seatPickerSelect('${s.name}')"><div class="sp-seat-ico"></div><div class="sp-seat-num">${s.name}</div></div>`;
 }
 
-function renderSeatsGrid(rows, occupiedMap, hasReserve) {
+function renderSeatsGrid(rows, occupiedMap) {
     let html = '';
     rows.forEach(row => {
         html += '<div class="sp-car-row">';
         row.forEach(s => { html += buildSeatHtml(s, occupiedMap); });
         html += '</div>';
     });
-    if (hasReserve) {
-        html += '<div class="sp-car-row" style="margin-top:4px;padding-top:8px;border-top:1.5px dashed #e2e8f0;">';
-        html += buildSeatHtml({ name: 'R1', type: 'seat' }, occupiedMap);
-        html += '<div style="flex:1;font-size:10px;color:#6d28d9;font-weight:600;display:flex;align-items:center;padding-left:8px;">Резерв</div>';
-        html += '</div>';
-    }
     return html;
 }
 
@@ -2333,8 +2345,8 @@ function renderSeatPickerModal(trip, occupiedMap) {
     const maxSeats = parseInt(trip.max_seats) || 7;
     const autoName = cleanAutoName(trip.auto_name) || 'Авто';
     const hasReserve = trip.reserve === true || trip.reserve === 'true';
-    const rows = getSeatRows(layout, maxSeats);
-    const seatsHtml = renderSeatsGrid(rows, occupiedMap, hasReserve);
+    const rows = getSeatRows(layout, maxSeats, hasReserve);
+    const seatsHtml = renderSeatsGrid(rows, occupiedMap);
     const tripDate = formatTripDate(trip.date);
     const tripCity = trip.city || '';
     const occ = Object.keys(occupiedMap).length;
@@ -2389,10 +2401,10 @@ function seatPickerSelect(seatName) {
     if (!trip) return;
     const occupiedMap = getOccupiedSeats(calId, seatPickerPaxId);
     const layout = detectLayout(trip);
-    const rows = getSeatRows(layout, parseInt(trip.max_seats) || 7);
     const hasReserve = trip.reserve === true || trip.reserve === 'true';
+    const rows = getSeatRows(layout, parseInt(trip.max_seats) || 7, hasReserve);
     const grid = document.getElementById('seatPickerGrid');
-    if (grid) grid.innerHTML = renderSeatsGrid(rows, occupiedMap, hasReserve);
+    if (grid) grid.innerHTML = renderSeatsGrid(rows, occupiedMap);
 }
 
 async function saveSeatPicker() {
