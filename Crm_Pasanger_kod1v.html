@@ -1583,8 +1583,12 @@ function renderTripCard(t) {
     const pct = maxS > 0 ? Math.round(occ / maxS * 100) : 0;
     const dirTag = String(t.direction || '').includes('Україна') ? '🇺🇦→🇪🇺' : String(t.direction || '').includes('Європа') ? '🇪🇺→🇺🇦' : '↔';
     const statusCls = t.status === 'Повний' ? 'trip-status-full' : t.status === 'Виконано' ? 'trip-status-done' : t.status === 'Архів' ? 'trip-status-archive' : 'trip-status-open';
+    const safeCalId = String(t.cal_id || '').replace(/'/g, "\\'");
+    const safeCity = String(t.city || '').replace(/'/g, "\\'");
+    const safeDate = String(t.date || '').replace(/'/g, "\\'");
+    const noCalId = !t.cal_id || !String(t.cal_id).trim();
 
-    return `<div class="trip-card">
+    return `<div class="trip-card ${noCalId ? 'trip-no-id' : ''}">
         <div class="trip-card-header">
             <div style="display:flex;justify-content:space-between;align-items:center;">
                 <span class="trip-card-city">${t.city || '—'}</span>
@@ -1595,6 +1599,7 @@ function renderTripCard(t) {
                 <span class="trip-card-tag date">📅 ${formatTripDate(t.date)}</span>
                 <span class="trip-card-tag auto">🚐 ${t.auto_name||''} (${t.layout||''})</span>
             </div>
+            ${noCalId ? '<div style="color:#dc2626;font-size:10px;font-weight:700;margin-top:4px;">⚠️ CAL_ID порожній — видалення неможливе</div>' : ''}
         </div>
         <div class="trip-card-body">
             <div class="trip-progress">
@@ -1602,9 +1607,9 @@ function renderTripCard(t) {
                 <div class="trip-progress-bar"><div class="trip-progress-fill ${pct>=100?'full':''}" style="width:${pct}%"></div></div>
             </div>
             <div class="trip-card-actions">
-                <button class="trip-action-btn" onclick="editTrip('${t.cal_id}')">✏️ Редагувати</button>
-                <button class="trip-action-btn" onclick="archiveTrip('${t.cal_id}','${t.city}','${t.date}')">📦 Архів</button>
-                <button class="trip-action-btn danger" onclick="deleteTrip('${t.cal_id}','${t.city}','${t.date}')">🗑️</button>
+                <button class="trip-action-btn" onclick="editTrip('${safeCalId}')">✏️ Редагувати</button>
+                <button class="trip-action-btn" onclick="archiveTrip('${safeCalId}','${safeCity}','${safeDate}')">📦 Архів</button>
+                <button class="trip-action-btn danger" onclick="deleteTrip('${safeCalId}','${safeCity}','${safeDate}')">🗑️</button>
             </div>
         </div>
     </div>`;
@@ -1877,13 +1882,20 @@ function archiveTrip(calId, city, date) {
 
 // Delete trip
 function deleteTrip(calId, city, date) {
+    console.log('[deleteTrip] calId=', calId, 'city=', city, 'date=', date);
+    if (!calId || !calId.trim()) {
+        showToast('❌ CAL_ID порожній — неможливо видалити');
+        return;
+    }
     showConfirm('Видалити рейс «' + city + ' ' + date + '»? Пасажири залишаться без рейсу.', async (yes) => {
         if (!yes) return;
         showLoader('Видалення...');
+        console.log('[deleteTrip] Sending API:', { cal_id: calId });
         const res = await apiPost('deleteTrip', { cal_id: calId });
+        console.log('[deleteTrip] Response:', res);
         hideLoader();
         if (res.ok) { showToast('✅ Видалено'); silentSync(); }
-        else showToast('❌ ' + (res.error || ''));
+        else showToast('❌ ' + (res.error || 'Невідома помилка'));
     });
 }
 
