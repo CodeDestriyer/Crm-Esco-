@@ -1308,8 +1308,13 @@ function renderDetailFields(p, fields, isReadonly) {
         const colName = COL_MAP[key] || key;
         const val = p[colName] || '';
         const isRO = READONLY_FIELDS.includes(key) || isReadonly;
+        const DATE_KEYS = ['date','dateCreated','dateArchive'];
         const safeVal = String(val).replace(/'/g,"\\'");
         let displayVal = val || '—';
+        // Format date fields (strip ISO time)
+        if (DATE_KEYS.includes(key) && val && key !== 'timing') {
+            displayVal = formatTripDate(val);
+        }
         // Direction styled badge
         if (key === 'direction' && val) {
             const isUE = val.includes('Україна') || val.includes('UA');
@@ -1461,7 +1466,7 @@ async function saveInline(paxId, key, sheet, newVal) {
 
     p[colName] = newVal;
     const el = document.getElementById('dv-' + paxId + '-' + key);
-    if (el) el.textContent = newVal || '—';
+    if (el) el.textContent = formatFieldDisplay(key, newVal);
 
     const shName = sheet || p._sheet || '';
     const res = await apiPost('updateField', { sheet: shName, pax_id: paxId, col: colName, value: newVal });
@@ -1471,8 +1476,15 @@ async function saveInline(paxId, key, sheet, newVal) {
     } else {
         showToast('❌ Помилка: ' + (res.error || ''));
         p[colName] = oldVal;
-        if (el) el.textContent = oldVal || '—';
+        if (el) el.textContent = formatFieldDisplay(key, oldVal);
     }
+}
+
+function formatFieldDisplay(key, val) {
+    if (!val) return '—';
+    const DATE_KEYS = ['date','dateCreated','dateArchive'];
+    if (DATE_KEYS.includes(key)) return formatTripDate(val);
+    return val;
 }
 
 function cancelInline(paxId, key) {
@@ -1480,7 +1492,7 @@ function cancelInline(paxId, key) {
     if (!p) return;
     const colName = COL_MAP[key] || key;
     const el = document.getElementById('dv-' + paxId + '-' + key);
-    if (el) el.textContent = p[colName] || '—';
+    if (el) el.textContent = formatFieldDisplay(key, p[colName]);
 }
 
 // ================================================================
