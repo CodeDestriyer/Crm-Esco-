@@ -392,6 +392,54 @@
         .trip-dd-unassign:hover { background: #fee2e2; }
         .trip-dd-empty { padding: 16px; text-align: center; font-size: 11px; color: var(--text-secondary); }
 
+        /* TRIP ASSIGN MODAL */
+        .trip-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1100; display: none; justify-content: center; align-items: flex-end; }
+        .trip-modal-overlay.show { display: flex; }
+        .trip-modal { background: white; border-radius: 16px 16px 0 0; width: 100%; max-width: 420px; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; animation: slideUp 0.25s ease; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .trip-modal-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+        .trip-modal-title { font-size: 14px; font-weight: 800; color: var(--text-primary); }
+        .trip-modal-step { font-size: 10px; color: var(--text-secondary); font-weight: 600; }
+        .trip-modal-close { width: 28px; height: 28px; border-radius: 50%; border: none; background: var(--bg-main); font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .trip-modal-body { flex: 1; overflow-y: auto; padding: 12px 16px; }
+        .trip-modal-foot { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
+        .trip-modal-foot .btn-cancel { flex: 1; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: white; font-size: 12px; font-weight: 700; cursor: pointer; }
+        .trip-modal-foot .btn-save { flex: 1; padding: 10px; border: none; border-radius: 10px; background: var(--orange); color: white; font-size: 12px; font-weight: 700; cursor: pointer; }
+        .trip-modal-foot .btn-save:disabled { opacity: 0.4; cursor: not-allowed; }
+        .trip-modal-foot .btn-unassign { flex: 1; padding: 10px; border: 1px solid var(--danger); border-radius: 10px; background: white; color: var(--danger); font-size: 12px; font-weight: 700; cursor: pointer; }
+
+        /* Date pills in trip modal */
+        .tm-dates-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+        .tm-date-pill { padding: 8px 12px; border-radius: 10px; border: 2px solid var(--border); background: white; cursor: pointer; text-align: center; min-width: 70px; transition: all 0.15s; }
+        .tm-date-pill:hover { border-color: var(--primary); background: #f0f7ff; }
+        .tm-date-pill.active { border-color: var(--orange); background: #fff7ed; }
+        .tm-date-day { font-size: 10px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; }
+        .tm-date-num { font-size: 14px; font-weight: 800; color: var(--text-primary); line-height: 1.2; }
+        .tm-date-month { font-size: 9px; color: var(--text-secondary); font-weight: 600; }
+        .tm-date-trips { font-size: 9px; color: var(--success); font-weight: 700; margin-top: 2px; }
+
+        /* Vehicle cards in trip modal */
+        .tm-section-label { font-size: 10px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin: 12px 0 8px; letter-spacing: 0.5px; }
+        .tm-vehicle-card { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; border: 2px solid var(--border); background: white; cursor: pointer; margin-bottom: 6px; transition: all 0.15s; }
+        .tm-vehicle-card:hover { border-color: var(--primary); background: #f0f7ff; }
+        .tm-vehicle-card.active { border-color: var(--orange); background: #fff7ed; }
+        .tm-vehicle-card.full { opacity: 0.5; cursor: not-allowed; }
+        .tm-vehicle-icon { font-size: 20px; flex-shrink: 0; }
+        .tm-vehicle-info { flex: 1; min-width: 0; }
+        .tm-vehicle-name { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+        .tm-vehicle-route { font-size: 10px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tm-vehicle-seats { text-align: right; flex-shrink: 0; }
+        .tm-vehicle-free { font-size: 13px; font-weight: 800; }
+        .tm-vehicle-free.green { color: var(--success); }
+        .tm-vehicle-free.red { color: var(--danger); }
+        .tm-vehicle-label { font-size: 9px; color: var(--text-secondary); }
+        .tm-no-vehicles { text-align: center; padding: 20px; color: var(--text-secondary); font-size: 11px; }
+
+        @media (min-width: 901px) {
+            .trip-modal-overlay { align-items: center; }
+            .trip-modal { border-radius: 16px; max-height: 70vh; }
+        }
+
         /* BULK TOOLBAR (sticky bottom bar when checkboxes selected) */
         .bulk-toolbar { position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 10px 16px; border-radius: 12px; z-index: 90; display: none; align-items: center; gap: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); font-size: 12px; font-weight: 600; max-width: 95vw; }
         .bulk-toolbar.show { display: flex; }
@@ -633,9 +681,12 @@
                 <div class="form-group"><label>Дата виїзду</label><input type="date" id="fDate" onchange="onDateChanged()"></div>
                 <div class="form-group"><label>Місць</label><input type="number" id="fSeats" value="1" min="1"></div>
             </div>
-            <div id="tripSuggestPanel" style="display:none; background:#fffbeb; border:1px solid #f59e0b; border-radius:8px; padding:10px; margin-bottom:8px;">
-                <div style="font-size:10px; font-weight:700; color:#d97706; text-transform:uppercase; margin-bottom:6px;">🚐 Знайдені рейси на цю дату</div>
-                <div id="tripSuggestList"></div>
+            <!-- Кнопка вибору рейсу (з'являється коли є рейси на дату) -->
+            <div id="tripSuggestPanel" style="display:none; margin-bottom:8px;">
+                <button type="button" onclick="openFormTripModal()" style="width:100%; padding:10px; border:2px dashed var(--orange); border-radius:10px; background:#fff7ed; color:var(--orange); font-size:12px; font-weight:700; cursor:pointer; font-family:inherit;">
+                    🚐 Є рейси на цю дату — натисніть щоб обрати
+                </button>
+                <div id="tripSuggestResult" style="display:none; margin-top:6px; padding:8px 12px; background:#ecfdf5; border-radius:8px; font-size:11px; font-weight:700; color:#059669;"></div>
             </div>
             <div class="form-group"><label>Адреса відправки</label><input type="text" id="fFrom"></div>
             <div class="form-group"><label>Адреса прибуття</label><input type="text" id="fTo"></div>
@@ -702,6 +753,24 @@
         <div class="confirm-buttons">
             <button class="confirm-btn no" onclick="confirmResult(false)">Скасувати</button>
             <button class="confirm-btn yes" onclick="confirmResult(true)">Підтвердити</button>
+        </div>
+    </div>
+</div>
+
+<!-- TRIP ASSIGN MODAL -->
+<div class="trip-modal-overlay" id="tripAssignOverlay" onclick="if(event.target===this)closeTripModal()">
+    <div class="trip-modal">
+        <div class="trip-modal-head">
+            <div>
+                <div class="trip-modal-title" id="tmTitle">Призначити рейс</div>
+                <div class="trip-modal-step" id="tmStep">Крок 1 — оберіть дату</div>
+            </div>
+            <button class="trip-modal-close" onclick="closeTripModal()">×</button>
+        </div>
+        <div class="trip-modal-body" id="tmBody"></div>
+        <div class="trip-modal-foot" id="tmFoot">
+            <button class="btn-cancel" onclick="closeTripModal()">Скасувати</button>
+            <button class="btn-save" id="tmSaveBtn" disabled onclick="confirmTripAssign()">Призначити</button>
         </div>
     </div>
 </div>
@@ -963,7 +1032,7 @@ function updateTripFilterDropdown() {
     trips.forEach(t => {
         const opt = document.createElement('option');
         opt.value = t.cal_id;
-        opt.textContent = (t.city || '?') + ' ' + (t.date || '') + ' (' + (t.direction || '') + ')';
+        opt.textContent = (t.city || '?') + ' ' + formatTripDate(t.date) + ' (' + (t.direction || '') + ')';
         sel.appendChild(opt);
     });
     sel.value = val;
@@ -1014,7 +1083,7 @@ function renderCard(p) {
     let tripBadgeText = '';
     if (calId) {
         const trip = trips.find(t => t.cal_id === calId);
-        tripBadgeText = trip ? (trip.date + ' ' + (trip.city||'')) : calId.substring(0,10);
+        tripBadgeText = trip ? (formatTripDate(trip.date) + ' ' + (trip.city||'')) : calId.substring(0,10);
     }
     const tripBadge = `<div class="trip-assign-wrap">
         <div class="card-trip-badge ${calId?'':'empty'}" onclick="event.stopPropagation(); toggleTripAssignDD('${id}')">${calId ? tripBadgeText : '⚠️ Без рейсу'}</div>
@@ -1197,56 +1266,61 @@ function openAddModal() {
     openModal('passengerModal');
 }
 
-// Trip suggest when date changes in add form
+// ================================================================
+// FORM — автопідказка рейсу при виборі дати
+// ================================================================
 let selectedFormCalId = '';
 
-async function onDateChanged() {
+// Перевірка чи є рейси на обрану дату
+function onDateChanged() {
     const date = document.getElementById('fDate').value;
     const panel = document.getElementById('tripSuggestPanel');
-    const list = document.getElementById('tripSuggestList');
+    const resultDiv = document.getElementById('tripSuggestResult');
     selectedFormCalId = '';
+    resultDiv.style.display = 'none';
 
     if (!date) { panel.style.display = 'none'; return; }
 
-    // Convert yyyy-mm-dd to dd.mm.yyyy
+    // Перевіряємо чи є рейси на цю дату
     const parts = date.split('-');
     const dateFormatted = parts[2] + '.' + parts[1] + '.' + parts[0];
-
     const dirSel = document.getElementById('fDirection').value;
-    const dirText = dirSel === 'eu-ua' ? 'Європа-УК' : 'Україна-ЄВ';
 
-    // Find matching trips from local data
     const matching = trips.filter(t => {
         if (t.status === 'Архів' || t.status === 'Виконано') return false;
-        if (String(t.date).trim() !== dateFormatted) return false;
+        var tDate = formatTripDate(t.date);
+        if (tDate !== dateFormatted) return false;
         const tDir = String(t.direction || '').toLowerCase();
         if (dirSel === 'ua-eu' && !tDir.match(/ук|ua|україна/)) return false;
         if (dirSel === 'eu-ua' && !tDir.match(/єв|eu|європа/)) return false;
         return true;
     });
 
-    if (matching.length === 0) {
-        panel.style.display = 'none';
-        return;
-    }
-
-    panel.style.display = 'block';
-    list.innerHTML = matching.map(t => {
-        const free = parseInt(t.free_seats) || 0;
-        const dirIcon = String(t.direction||'').includes('Україна') ? '🇺🇦→🇪🇺' : '🇪🇺→🇺🇦';
-        return `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:white;border-radius:6px;margin-bottom:4px;cursor:pointer;border:2px solid ${selectedFormCalId===t.cal_id?'var(--orange)':'transparent'};" onclick="selectFormTrip('${t.cal_id}',this)">
-            <span>${dirIcon}</span>
-            <span style="font-size:12px;font-weight:700;flex:1;">${t.city||'—'} — ${t.auto_name||''}</span>
-            <span style="font-size:10px;color:${free>0?'var(--success)':'var(--danger)'};font-weight:700;">${free} вільн.</span>
-        </div>`;
-    }).join('');
+    panel.style.display = matching.length > 0 ? 'block' : 'none';
 }
 
-function selectFormTrip(calId, el) {
-    selectedFormCalId = calId;
-    // Highlight selected
-    el.parentElement.querySelectorAll('div').forEach(d => d.style.borderColor = 'transparent');
-    el.style.borderColor = 'var(--orange)';
+// Відкрити модалку вибору рейсу з форми додавання
+function openFormTripModal() {
+    // Створюємо тимчасовий "фейковий" pax для визначення напряму
+    const dirSel = document.getElementById('fDirection').value;
+    const fakePax = { 'PAX_ID': '__form__', 'Напрям': dirSel === 'eu-ua' ? 'Європа-УК' : 'Україна-ЄВ' };
+
+    // Тимчасово додаємо в масив
+    passengers.push(fakePax);
+
+    openTripModal(['__form__'], 'form', function(calId) {
+        // Callback — рейс обрано
+        selectedFormCalId = calId;
+        var trip = trips.find(t => t.cal_id === calId);
+        var resultDiv = document.getElementById('tripSuggestResult');
+        if (trip && resultDiv) {
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '✅ Обрано: ' + formatTripDate(trip.date) + ' — ' + (trip.auto_name || '') + ' (' + (trip.city || '') + ')';
+        }
+    });
+
+    // Видаляємо фейкового
+    passengers = passengers.filter(p => p['PAX_ID'] !== '__form__');
 }
 
 async function savePassenger() {
@@ -1387,7 +1461,7 @@ function renderTripCard(t) {
             </div>
             <div class="trip-card-meta">
                 <span class="trip-card-tag dir">${dirTag} ${t.direction||''}</span>
-                <span class="trip-card-tag date">📅 ${t.date||''}</span>
+                <span class="trip-card-tag date">📅 ${formatTripDate(t.date)}</span>
                 <span class="trip-card-tag auto">🚐 ${t.auto_name||''} (${t.layout||''})</span>
             </div>
         </div>
@@ -1769,78 +1843,261 @@ function toggleTripAssignDD(paxId) {
     const dd = document.getElementById('tripDD-' + paxId);
     if (!dd) return;
 
-    if (dd.classList.contains('show')) {
-        dd.classList.remove('show');
-        openTripDDId = null;
+    // Відкриваємо модальне вікно замість дропдауну
+    openTripModal([paxId]);
+}
+
+// ================================================================
+// TRIP ASSIGN MODAL — двокрокове вікно (дата → авто)
+// ================================================================
+
+// Стан модалки
+let tmPaxIds = [];        // Для кого призначаємо
+let tmSelectedCalId = ''; // Обраний рейс
+let tmSelectedDate = '';  // Обрана дата
+let tmMode = 'assign';    // 'assign' | 'form' (з форми додавання)
+let tmFormCallback = null; // Callback для форми
+
+// Форматування дати: ISO/будь-який → "dd.MM"
+function formatTripDate(raw) {
+    if (!raw) return '—';
+    var s = String(raw);
+    // ISO формат "2026-03-04T08:00:00.000Z" → "04.03.2026"
+    if (s.includes('T')) s = s.split('T')[0];
+    // "2026-03-04" → "04.03.2026"
+    if (s.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        var p = s.split('-');
+        return p[2] + '.' + p[1] + '.' + p[0];
+    }
+    return s;
+}
+
+// Коротка дата для пілюлі "04 бер"
+function formatDatePill(raw) {
+    if (!raw) return { day: '—', num: '?', month: '' };
+    var formatted = formatTripDate(raw);
+    var parts = formatted.split('.');
+    if (parts.length < 3) return { day: '', num: formatted, month: '' };
+    var dayNum = parts[0];
+    var monthNum = parseInt(parts[1]);
+    var months = ['','січ','лют','бер','кві','тра','чер','лип','сер','вер','жов','лис','гру'];
+    var dayNames = ['нд','пн','вт','ср','чт','пт','сб'];
+    var dateObj = new Date(parseInt(parts[2]), monthNum - 1, parseInt(dayNum));
+    var dayName = dayNames[dateObj.getDay()] || '';
+    return { day: dayName, num: dayNum, month: months[monthNum] || '' };
+}
+
+// Отримати напрямок пасажирів
+function getPaxDirection(paxIds) {
+    var dirs = { ue: false, eu: false };
+    paxIds.forEach(function(id) {
+        var p = passengers.find(function(x) { return x['PAX_ID'] === id; });
+        if (!p) return;
+        var d = String(p['Напрям'] || '').toLowerCase();
+        if (d.includes('ук') || d.includes('ua') || d.includes('україна')) dirs.ue = true;
+        if (d.includes('єв') || d.includes('eu') || d.includes('європа')) dirs.eu = true;
+    });
+    return dirs;
+}
+
+// Фільтруємо рейси по напряму
+function getMatchingTrips(paxIds) {
+    var dirs = getPaxDirection(paxIds);
+    return trips.filter(function(t) {
+        if (t.status === 'Архів' || t.status === 'Виконано') return false;
+        var tDir = String(t.direction || '').toLowerCase();
+        var tIsUE = tDir.includes('ук') || tDir.includes('ua') || tDir.includes('україна');
+        var tIsEU = tDir.includes('єв') || tDir.includes('eu') || tDir.includes('європа');
+        if (dirs.ue && tIsUE) return true;
+        if (dirs.eu && tIsEU) return true;
+        return false;
+    });
+}
+
+// Унікальні дати з рейсів
+function getUniqueDates(tripsList) {
+    var dateMap = {};
+    tripsList.forEach(function(t) {
+        var d = formatTripDate(t.date);
+        if (!dateMap[d]) dateMap[d] = { raw: t.date, formatted: d, count: 0, totalFree: 0 };
+        dateMap[d].count++;
+        dateMap[d].totalFree += (parseInt(t.free_seats) || 0);
+    });
+    var arr = Object.values(dateMap);
+    arr.sort(function(a,b) { return a.formatted > b.formatted ? 1 : -1; });
+    return arr;
+}
+
+// ВІДКРИТИ модальне вікно призначення рейсу
+function openTripModal(paxIds, mode, callback) {
+    tmPaxIds = paxIds || [];
+    tmSelectedCalId = '';
+    tmSelectedDate = '';
+    tmMode = mode || 'assign';
+    tmFormCallback = callback || null;
+
+    var overlay = document.getElementById('tripAssignOverlay');
+    var title = document.getElementById('tmTitle');
+    var foot = document.getElementById('tmFoot');
+
+    // Заголовок
+    if (tmPaxIds.length > 1) {
+        title.textContent = 'Призначити рейс (' + tmPaxIds.length + ' лідів)';
+    } else {
+        var p = passengers.find(function(x) { return x['PAX_ID'] === tmPaxIds[0]; });
+        title.textContent = p ? 'Рейс: ' + (p['Піб'] || tmPaxIds[0]) : 'Призначити рейс';
+    }
+
+    // Кнопка "Зняти" якщо вже призначено (тільки для 1 пасажира)
+    if (tmPaxIds.length === 1) {
+        var px = passengers.find(function(x) { return x['PAX_ID'] === tmPaxIds[0]; });
+        if (px && px['CAL_ID']) {
+            foot.innerHTML = '<button class="btn-unassign" onclick="doUnassignTrip()">✕ Зняти з рейсу</button>' +
+                '<button class="btn-cancel" onclick="closeTripModal()">Скасувати</button>' +
+                '<button class="btn-save" id="tmSaveBtn" disabled onclick="confirmTripAssign()">Призначити</button>';
+        } else {
+            foot.innerHTML = '<button class="btn-cancel" onclick="closeTripModal()">Скасувати</button>' +
+                '<button class="btn-save" id="tmSaveBtn" disabled onclick="confirmTripAssign()">Призначити</button>';
+        }
+    } else {
+        foot.innerHTML = '<button class="btn-cancel" onclick="closeTripModal()">Скасувати</button>' +
+            '<button class="btn-save" id="tmSaveBtn" disabled onclick="confirmTripAssign()">Призначити</button>';
+    }
+
+    // Показуємо крок 1 — дати
+    renderTripModalStep1();
+    overlay.classList.add('show');
+}
+
+function closeTripModal() {
+    document.getElementById('tripAssignOverlay').classList.remove('show');
+    tmPaxIds = [];
+    tmSelectedCalId = '';
+    tmSelectedDate = '';
+}
+
+// КРОК 1 — вибір дати
+function renderTripModalStep1() {
+    document.getElementById('tmStep').textContent = 'Крок 1 — оберіть дату';
+    var saveBtn = document.getElementById('tmSaveBtn');
+    if (saveBtn) saveBtn.disabled = true;
+    tmSelectedCalId = '';
+    tmSelectedDate = '';
+
+    var matchTrips = getMatchingTrips(tmPaxIds);
+
+    if (matchTrips.length === 0) {
+        document.getElementById('tmBody').innerHTML =
+            '<div class="tm-no-vehicles">Немає доступних рейсів для цього напряму</div>';
         return;
     }
 
-    const p = passengers.find(x => x['PAX_ID'] === paxId);
-    if (!p) return;
+    var dates = getUniqueDates(matchTrips);
 
-    const pDir = String(p['Напрям'] || '').toLowerCase();
-    const isPaxUE = pDir.includes('ук') || pDir.includes('ua') || pDir.includes('україна');
-    const isPaxEU = pDir.includes('єв') || pDir.includes('eu') || pDir.includes('європа');
-
-    // Filter trips matching direction + open status
-    const matchTrips = trips.filter(t => {
-        if (t.status === 'Архів' || t.status === 'Виконано') return false;
-        const tDir = String(t.direction || '').toLowerCase();
-        if (isPaxUE && (tDir.includes('ук') || tDir.includes('ua') || tDir.includes('україна'))) return true;
-        if (isPaxEU && (tDir.includes('єв') || tDir.includes('eu') || tDir.includes('європа'))) return true;
-        return false;
+    var html = '<div class="tm-section-label">Доступні дати</div><div class="tm-dates-grid">';
+    dates.forEach(function(d) {
+        var pill = formatDatePill(d.raw);
+        html += '<div class="tm-date-pill" onclick="selectTripDate(\'' + d.formatted + '\')" id="tm-date-' + d.formatted.replace(/\./g,'-') + '">' +
+            '<div class="tm-date-day">' + pill.day + '</div>' +
+            '<div class="tm-date-num">' + pill.num + '</div>' +
+            '<div class="tm-date-month">' + pill.month + '</div>' +
+            '<div class="tm-date-trips">' + d.count + ' рейс' + (d.count > 1 ? 'ів' : '') + '</div>' +
+        '</div>';
     });
+    html += '</div>';
 
-    let html = '<div class="trip-dd-header">Призначити рейс</div>';
-
-    // If already assigned — option to unassign
-    if (p['CAL_ID']) {
-        html += `<div class="trip-dd-unassign" onclick="event.stopPropagation(); unassignTrip('${paxId}')">✕ Зняти з рейсу</div>`;
-    }
-
-    if (matchTrips.length === 0) {
-        html += '<div class="trip-dd-empty">Немає доступних рейсів для цього напряму</div>';
-    } else {
-        matchTrips.forEach(t => {
-            const dirIcon = String(t.direction||'').includes('Україна') ? '🇺🇦→🇪🇺' : '🇪🇺→🇺🇦';
-            const free = parseInt(t.free_seats) || 0;
-            const isFull = free <= 0;
-            const isActive = p['CAL_ID'] === t.cal_id;
-            html += `<div class="trip-dd-item ${isActive?'active':''}" onclick="event.stopPropagation(); assignSingleTrip('${paxId}','${t.cal_id}')">
-                <span class="trip-dd-dir">${dirIcon}</span>
-                <div class="trip-dd-info">
-                    <span class="trip-dd-date">${t.date || '—'}</span>
-                    <span class="trip-dd-city">${t.city || '—'} — ${t.auto_name || ''}</span>
-                </div>
-                <span class="trip-dd-seats ${isFull?'full':''}">${free} вільн.</span>
-            </div>`;
-        });
-    }
-
-    dd.innerHTML = html;
-    dd.classList.add('show');
-    openTripDDId = paxId;
+    document.getElementById('tmBody').innerHTML = html;
 }
 
-async function assignSingleTrip(paxId, calId) {
-    // Close dropdown
-    const dd = document.getElementById('tripDD-' + paxId);
-    if (dd) dd.classList.remove('show');
-    openTripDDId = null;
+// Вибрано дату → показуємо авто (крок 2)
+function selectTripDate(dateFormatted) {
+    tmSelectedDate = dateFormatted;
+    tmSelectedCalId = '';
+    var saveBtn = document.getElementById('tmSaveBtn');
+    if (saveBtn) saveBtn.disabled = true;
 
-    const p = passengers.find(x => x['PAX_ID'] === paxId);
-    if (!p) return;
+    document.getElementById('tmStep').textContent = 'Крок 2 — оберіть авто';
+
+    var matchTrips = getMatchingTrips(tmPaxIds);
+    var forDate = matchTrips.filter(function(t) {
+        return formatTripDate(t.date) === dateFormatted;
+    });
+
+    // Оновлюємо вибір дати
+    document.querySelectorAll('.tm-date-pill').forEach(function(el) { el.classList.remove('active'); });
+    var activeEl = document.getElementById('tm-date-' + dateFormatted.replace(/\./g,'-'));
+    if (activeEl) activeEl.classList.add('active');
+
+    // Рендеримо авто під датами
+    var vehiclesDiv = document.getElementById('tmVehicles');
+    if (!vehiclesDiv) {
+        var body = document.getElementById('tmBody');
+        body.innerHTML += '<div class="tm-section-label">Авто на ' + dateFormatted + '</div><div id="tmVehicles"></div>';
+        vehiclesDiv = document.getElementById('tmVehicles');
+    } else {
+        // Оновлюємо заголовок
+        var labels = document.querySelectorAll('.tm-section-label');
+        if (labels.length > 1) labels[1].textContent = 'Авто на ' + dateFormatted;
+    }
+
+    if (forDate.length === 0) {
+        vehiclesDiv.innerHTML = '<div class="tm-no-vehicles">Немає авто на цю дату</div>';
+        return;
+    }
+
+    var html = '';
+    forDate.forEach(function(t) {
+        var free = parseInt(t.free_seats) || 0;
+        var max = parseInt(t.max_seats) || 0;
+        var isFull = free <= 0;
+        var dirIcon = String(t.direction||'').includes('Україна') ? '🇺🇦→🇪🇺' : '🇪🇺→🇺🇦';
+        html += '<div class="tm-vehicle-card ' + (isFull ? 'full' : '') + '" id="tm-veh-' + t.cal_id + '" onclick="' + (isFull ? '' : 'selectTripVehicle(\'' + t.cal_id + '\')') + '">' +
+            '<div class="tm-vehicle-icon">🚐</div>' +
+            '<div class="tm-vehicle-info">' +
+                '<div class="tm-vehicle-name">' + dirIcon + ' ' + (t.auto_name || 'Авто') + '</div>' +
+                '<div class="tm-vehicle-route">' + (t.city || '—') + '</div>' +
+            '</div>' +
+            '<div class="tm-vehicle-seats">' +
+                '<div class="tm-vehicle-free ' + (free > 2 ? 'green' : 'red') + '">' + free + '/' + max + '</div>' +
+                '<div class="tm-vehicle-label">' + (isFull ? 'Повний' : 'вільних') + '</div>' +
+            '</div>' +
+        '</div>';
+    });
+    vehiclesDiv.innerHTML = html;
+}
+
+// Вибрано авто → активуємо кнопку "Призначити"
+function selectTripVehicle(calId) {
+    tmSelectedCalId = calId;
+    document.querySelectorAll('.tm-vehicle-card').forEach(function(el) { el.classList.remove('active'); });
+    var el = document.getElementById('tm-veh-' + calId);
+    if (el) el.classList.add('active');
+    var saveBtn = document.getElementById('tmSaveBtn');
+    if (saveBtn) saveBtn.disabled = false;
+}
+
+// Підтвердження — надсилаємо API
+async function confirmTripAssign() {
+    if (!tmSelectedCalId) return;
+    closeTripModal();
+
+    // Якщо з форми додавання — callback
+    if (tmMode === 'form' && tmFormCallback) {
+        tmFormCallback(tmSelectedCalId);
+        return;
+    }
 
     showLoader('Призначаю рейс...');
-    const res = await apiPost('assignTrip', { cal_id: calId, pax_ids: [paxId] });
+    var res = await apiPost('assignTrip', { cal_id: tmSelectedCalId, pax_ids: tmPaxIds });
 
     if (res.ok) {
-        // Update local state
-        p['CAL_ID'] = calId;
-        if (p['Статус ліда'] === 'Новий') {
-            p['Статус ліда'] = 'В роботі';
-            await apiPost('updateField', { sheet: p._sheet || '', pax_id: paxId, col: 'Статус ліда', value: 'В роботі' });
-        }
+        tmPaxIds.forEach(function(id) {
+            var p = passengers.find(function(x) { return x['PAX_ID'] === id; });
+            if (p) {
+                p['CAL_ID'] = tmSelectedCalId;
+                if (p['Статус ліда'] === 'Новий') p['Статус ліда'] = 'В роботі';
+            }
+        });
         hideLoader();
         showToast('✅ Рейс призначено');
         silentSync();
@@ -1850,19 +2107,17 @@ async function assignSingleTrip(paxId, calId) {
     }
 }
 
-async function unassignTrip(paxId) {
-    const dd = document.getElementById('tripDD-' + paxId);
-    if (dd) dd.classList.remove('show');
-    openTripDDId = null;
+// Зняти з рейсу (кнопка в модалці)
+async function doUnassignTrip() {
+    closeTripModal();
+    if (tmPaxIds.length === 0) return;
+    var paxId = tmPaxIds[0];
 
-    const p = passengers.find(x => x['PAX_ID'] === paxId);
+    var p = passengers.find(function(x) { return x['PAX_ID'] === paxId; });
     if (!p) return;
-    const oldCalId = p['CAL_ID'];
 
     showLoader('Знімаю з рейсу...');
-
-    // Clear CAL_ID
-    const res = await apiPost('updateField', { sheet: p._sheet || '', pax_id: paxId, col: 'CAL_ID', value: '' });
+    var res = await apiPost('unassignTrip', { pax_ids: [paxId] });
     if (res.ok) {
         p['CAL_ID'] = '';
         hideLoader();
@@ -1877,51 +2132,12 @@ async function unassignTrip(paxId) {
 // ================================================================
 // BULK TRIP ASSIGN
 // ================================================================
+// Масове призначення — відкриваємо ту саму модалку
 function openBulkTripDropdown(e) {
     e.stopPropagation();
-    const dd = document.getElementById('bulkTripDd');
-    if (dd.classList.contains('show')) { dd.classList.remove('show'); return; }
-
-    // Get directions of selected passengers
-    const selPax = passengers.filter(p => selectedIds.has(p['PAX_ID']));
-    const dirs = new Set();
-    selPax.forEach(p => {
-        const d = String(p['Напрям'] || '').toLowerCase();
-        if (d.includes('ук') || d.includes('ua') || d.includes('україна')) dirs.add('ue');
-        if (d.includes('єв') || d.includes('eu') || d.includes('європа')) dirs.add('eu');
-    });
-
-    // Filter matching trips
-    const matchTrips = trips.filter(t => {
-        if (t.status === 'Архів' || t.status === 'Виконано') return false;
-        const tDir = String(t.direction || '').toLowerCase();
-        if (dirs.has('ue') && (tDir.includes('ук') || tDir.includes('ua') || tDir.includes('україна'))) return true;
-        if (dirs.has('eu') && (tDir.includes('єв') || tDir.includes('eu') || tDir.includes('європа'))) return true;
-        return false;
-    });
-
-    let html = '<div class="trip-dd-header">Призначити рейс для ' + selectedIds.size + ' лідів</div>';
-
-    if (matchTrips.length === 0) {
-        html += '<div class="trip-dd-empty">Немає доступних рейсів</div>';
-    } else {
-        matchTrips.forEach(t => {
-            const dirIcon = String(t.direction||'').includes('Україна') ? '🇺🇦→🇪🇺' : '🇪🇺→🇺🇦';
-            const free = parseInt(t.free_seats) || 0;
-            const isFull = free <= 0;
-            html += `<div class="trip-dd-item" onclick="event.stopPropagation(); bulkAssignTrip('${t.cal_id}')">
-                <span class="trip-dd-dir">${dirIcon}</span>
-                <div class="trip-dd-info">
-                    <span class="trip-dd-date">${t.date || '—'}</span>
-                    <span class="trip-dd-city">${t.city || '—'} — ${t.auto_name || ''}</span>
-                </div>
-                <span class="trip-dd-seats ${isFull?'full':''}">${free} вільн.</span>
-            </div>`;
-        });
-    }
-
-    dd.innerHTML = html;
-    dd.classList.add('show');
+    const paxIds = Array.from(selectedIds);
+    if (paxIds.length === 0) return;
+    openTripModal(paxIds);
 }
 
 function closeBulkTripDd() {
@@ -1929,46 +2145,7 @@ function closeBulkTripDd() {
     if (dd) dd.classList.remove('show');
 }
 
-async function bulkAssignTrip(calId) {
-    closeBulkTripDd();
-    const paxIds = Array.from(selectedIds);
-    if (paxIds.length === 0) return;
-
-    const trip = trips.find(t => t.cal_id === calId);
-    const tripLabel = trip ? (trip.date + ' ' + trip.city) : calId;
-
-    showLoader('Призначаю ' + paxIds.length + ' лідів на рейс...');
-    const res = await apiPost('assignTrip', { cal_id: calId, pax_ids: paxIds });
-
-    if (res.ok) {
-        // Update local
-        paxIds.forEach(id => {
-            const p = passengers.find(x => x['PAX_ID'] === id);
-            if (p) {
-                p['CAL_ID'] = calId;
-                if (p['Статус ліда'] === 'Новий') p['Статус ліда'] = 'В роботі';
-            }
-        });
-
-        // Bulk update lead status for "Новий" leads
-        const newLeads = paxIds.filter(id => {
-            const p = passengers.find(x => x['PAX_ID'] === id);
-            return p && p['Статус ліда'] === 'В роботі';
-        });
-        if (newLeads.length > 0) {
-            await apiPost('bulkUpdateField', { sheet: 'ue', col: 'Статус ліда', value: 'В роботі', pax_ids: newLeads });
-            await apiPost('bulkUpdateField', { sheet: 'eu', col: 'Статус ліда', value: 'В роботі', pax_ids: newLeads });
-        }
-
-        hideLoader();
-        showToast('✅ ' + paxIds.length + ' лідів → ' + tripLabel);
-        clearSelection();
-        silentSync();
-    } else {
-        hideLoader();
-        showToast('❌ ' + (res.error || 'Помилка'));
-    }
-}
+// bulkAssignTrip — більше не використовується, замінено на openTripModal
 
 // Close dropdowns on outside click
 document.addEventListener('click', (e) => {
