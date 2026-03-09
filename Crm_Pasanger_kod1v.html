@@ -599,8 +599,8 @@
             .trip-modal { border-radius: 16px; max-height: 70vh; }
         }
 
-        /* BULK TOOLBAR (sticky bottom bar when checkboxes selected) */
-        .bulk-toolbar { position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 10px 16px; border-radius: 12px; z-index: 90; display: none; align-items: center; gap: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); font-size: 12px; font-weight: 600; max-width: 95vw; }
+        /* BULK TOOLBAR — mobile: bottom bar, PC: left sidebar panel */
+        .bulk-toolbar { position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 10px 16px; border-radius: 12px; z-index: 90; display: none; align-items: center; gap: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); font-size: 12px; font-weight: 600; max-width: 95vw; flex-direction: row; }
         .bulk-toolbar.show { display: flex; }
         .bulk-toolbar-count { background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; white-space: nowrap; }
         .bulk-toolbar-btn { padding: 8px 14px; border: none; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; transition: all 0.2s; }
@@ -612,7 +612,26 @@
         .bulk-trip-dd.show { display: block; }
 
         @media (min-width: 901px) {
-            .bulk-toolbar { bottom: 20px; }
+            .bulk-toolbar {
+                position: fixed;
+                left: 0;
+                top: 52px;
+                bottom: auto;
+                transform: none;
+                width: 300px;
+                max-width: 300px;
+                border-radius: 0;
+                flex-direction: column;
+                align-items: stretch;
+                padding: 16px;
+                gap: 10px;
+                height: calc(100vh - 52px);
+                box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+                z-index: 160;
+            }
+            .bulk-toolbar-count { text-align: center; padding: 8px 12px; font-size: 13px; border-radius: 10px; }
+            .bulk-toolbar-btn { padding: 12px 16px; font-size: 13px; border-radius: 10px; text-align: center; }
+            .bulk-trip-dd { position: relative; bottom: auto; left: auto; margin-bottom: 0; margin-top: 6px; max-height: calc(100vh - 280px); }
         }
 
         /* RESPONSIVE */
@@ -1187,9 +1206,13 @@ function updateAllCounts() {
 
 function setCount(id, n) { const el = document.getElementById(id); if (el) el.textContent = n; }
 function isDir(p, dir) {
-    const d = String(p['Напрям'] || '').toLowerCase();
-    if (dir === 'ua-eu') return d.includes('ук') || d.includes('ua') || d.includes('україна');
-    if (dir === 'eu-ua') return d.includes('єв') || d.includes('eu') || d.includes('європа');
+    const d = String(p['Напрям'] || '').toLowerCase().trim();
+    // "Україна-Європа" = ua-eu, "Європа-Україна" = eu-ua
+    // Check what the direction STARTS with to avoid double-counting
+    const startsUA = d.startsWith('ук') || d.startsWith('ua') || d.startsWith('україна');
+    const startsEU = d.startsWith('єв') || d.startsWith('eu') || d.startsWith('європа');
+    if (dir === 'ua-eu') return startsUA;
+    if (dir === 'eu-ua') return startsEU;
     return true;
 }
 
@@ -2813,9 +2836,9 @@ function getPaxDirection(paxIds) {
     paxIds.forEach(function(id) {
         var p = passengers.find(function(x) { return x['PAX_ID'] === id; });
         if (!p) return;
-        var d = String(p['Напрям'] || '').toLowerCase();
-        if (d.includes('ук') || d.includes('ua') || d.includes('україна')) dirs.ue = true;
-        if (d.includes('єв') || d.includes('eu') || d.includes('європа')) dirs.eu = true;
+        var d = String(p['Напрям'] || '').toLowerCase().trim();
+        if (d.startsWith('ук') || d.startsWith('ua') || d.startsWith('україна')) dirs.ue = true;
+        if (d.startsWith('єв') || d.startsWith('eu') || d.startsWith('європа')) dirs.eu = true;
     });
     return dirs;
 }
@@ -2825,9 +2848,9 @@ function getMatchingTrips(paxIds) {
     var dirs = getPaxDirection(paxIds);
     return trips.filter(function(t) {
         if (t.status === 'Архів' || t.status === 'Виконано') return false;
-        var tDir = String(t.direction || '').toLowerCase();
-        var tIsUE = tDir.includes('ук') || tDir.includes('ua') || tDir.includes('україна');
-        var tIsEU = tDir.includes('єв') || tDir.includes('eu') || tDir.includes('європа');
+        var tDir = String(t.direction || '').toLowerCase().trim();
+        var tIsUE = tDir.startsWith('ук') || tDir.startsWith('ua') || tDir.startsWith('україна');
+        var tIsEU = tDir.startsWith('єв') || tDir.startsWith('eu') || tDir.startsWith('європа');
         if (dirs.ue && tIsUE) return true;
         if (dirs.eu && tIsEU) return true;
         return false;
