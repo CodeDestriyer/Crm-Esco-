@@ -504,11 +504,11 @@
         }
         @media (min-width: 901px) {
             .side-menu, .side-menu-overlay { display: none !important; }
-            .bottom-nav { display: none; }
+            .bottom-nav { display: flex; }
             .header { padding: 12px 20px; }
             .logo { font-size: 15px; }
             .search-box { max-width: 300px; }
-            .main-content-area { padding: 16px 24px; }
+            .main-content-area { padding: 16px 24px; padding-bottom: 80px; }
             .pc-sidebar-collapse-btn { display: flex; }
             .details-grid { grid-template-columns: repeat(4, 1fr); }
         }
@@ -693,6 +693,7 @@
 <!-- BOTTOM NAV (Mobile) -->
 <nav class="bottom-nav">
     <button class="nav-item active" id="navPax" onclick="showPaxView('all')"><span>👥</span>Пасажири</button>
+    <button class="nav-item" onclick="window.location.href='index_posylki.html'"><span>📦</span>Посилки</button>
     <button class="nav-item" id="navTrips" onclick="showTripsView()"><span>🚐</span>Рейси</button>
     <button class="nav-item" onclick="silentSync()"><span>🔄</span>Синхр.</button>
     <button class="nav-item" onclick="openColumnConfigurator()"><span>⚙️</span>Колонки</button>
