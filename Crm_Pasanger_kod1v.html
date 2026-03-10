@@ -284,6 +284,9 @@
         .route-sheet-table { width:100%; border-collapse:collapse; font-size:11px; }
         .route-sheet-table th { text-align:left; padding:6px 8px; background:#f8fafc; border-bottom:2px solid var(--border); font-size:10px; text-transform:uppercase; color:var(--text-secondary); font-weight:700; }
         .route-sheet-table td { padding:6px 8px; border-bottom:1px solid #f1f5f9; }
+        .route-delete-btn { background:none; border:none; color:#dc2626; font-size:14px; cursor:pointer; padding:2px 6px; border-radius:4px; opacity:0; transition:opacity .2s; line-height:1; }
+        .route-sidebar-item:hover .route-delete-btn { opacity:0.7; }
+        .route-delete-btn:hover { opacity:1!important; background:rgba(220,38,38,0.1); }
         .route-sheet-table tr:hover td { background:#f8fafc; }
         .passengers-view { display: block; }
         .passengers-view.hidden { display: none; }
@@ -732,10 +735,11 @@
             <span class="side-menu-item-count" id="mobileCountTrips">0</span>
         </div>
         <div style="height:1px;background:rgba(255,255,255,0.1);margin:8px 0;"></div>
-        <div class="side-menu-item" id="mobileRoutes" onclick="showRoutesView(); closeSideMenu();" style="background:rgba(124,58,237,0.3);">
+        <div class="side-menu-item" onclick="toggleMobileRoutesList()" style="background:rgba(124,58,237,0.3);">
             <span class="side-menu-item-left">🗺️ Маршрути</span>
             <span class="side-menu-item-count" id="mobileCountRoutes">0</span>
         </div>
+        <div id="mobileRoutesList" style="display:none;padding-left:12px;"></div>
         <div style="height:1px;background:rgba(255,255,255,0.1);margin:8px 0;"></div>
         <div class="side-menu-item" onclick="openAddModal(); closeSideMenu();" style="color:#10b981;">
             <span class="side-menu-item-left">➕ Новий пасажир</span>
@@ -841,9 +845,9 @@
                 <span class="pc-sidebar-toggle" id="pcToggleRoutes">▼</span>
             </div>
             <div class="pc-sidebar-content" id="pcSectionRoutes">
-                <div class="pc-sidebar-item" id="pcRoutes" onclick="showRoutesView()" style="color:#7c3aed;font-weight:600;">
-                    <span><span class="item-icon">🗺️</span><span class="item-text">Аркуші маршрутів</span></span>
-                    <span class="item-count" id="pcCountRoutes">0</span>
+                <div id="pcRoutesList"></div>
+                <div style="margin-top:8px;display:flex;align-items:center;justify-content:center;padding:11px;border:2px dashed var(--border);border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;color:#7c3aed;background:white;" onclick="promptCreateRoute()">
+                    ➕ Новий маршрут
                 </div>
             </div>
         </div>
@@ -896,8 +900,10 @@
         <!-- ROUTES VIEW -->
         <div class="routes-view" id="routesView" style="display:none;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
-                <h2 style="margin:0;font-size:18px;color:var(--text-primary);">🗺️ Аркуші маршрутів</h2>
-                <button class="bs-btn" style="background:var(--primary);color:white;font-size:11px;padding:8px 14px;" onclick="loadRoutes()">🔄 Оновити</button>
+                <h2 style="margin:0;font-size:18px;color:var(--text-primary);" id="routeViewTitle">🗺️ Маршрут</h2>
+                <div style="display:flex;gap:8px;">
+                    <button class="bs-btn" style="background:var(--primary);color:white;font-size:11px;padding:8px 14px;" onclick="loadRoutes()">🔄 Оновити</button>
+                </div>
             </div>
             <div id="routesLoading" style="display:none;text-align:center;padding:40px;color:var(--text-secondary);font-size:13px;">⏳ Завантаження маршрутів...</div>
             <div id="routesError" style="display:none;text-align:center;padding:40px;color:#dc2626;font-size:13px;"></div>
@@ -1134,6 +1140,7 @@ let passengers = [];
 let trips = [];
 let routes = [];
 let allRouteSheets = []; // Всі аркуші (включно з Відправка_, Витрати_, Шаблони)
+let activeRouteIdx = null; // Індекс обраного маршруту для перегляду
 let currentView = 'pax'; // 'pax' | 'trips' | 'routes'
 let currentDir = 'all';
 let tripTimeFilter = 'future';
@@ -1255,7 +1262,7 @@ function showRoutesView() {
     updatePcSidebarActive();
     updateMobileSidebarActive();
     updateNavActive('routes');
-    if (routes.length === 0) loadRoutes();
+    if (routes.length === 0 && allRouteSheets.length === 0) loadRoutes();
     else renderRoutes();
 }
 
@@ -1281,6 +1288,7 @@ async function loadRoutes() {
             });
             setCount('pcCountRoutes', routes.length);
             setCount('mobileCountRoutes', routes.length);
+            renderRouteSidebar();
             renderRoutes();
         } else {
             errEl.style.display = 'block';
@@ -1300,77 +1308,217 @@ const ROUTE_DISPLAY_COLS = [
     'Адреса прибуття', 'Сума', 'Валюта', 'Статус оплати', 'Статус'
 ];
 
+// ── Рендер списку маршрутів в сайдбарах ──
+function renderRouteSidebar() {
+    // PC sidebar
+    const pcList = document.getElementById('pcRoutesList');
+    if (pcList) {
+        if (routes.length === 0) {
+            pcList.innerHTML = '<div style="padding:10px 14px;font-size:11px;color:var(--text-secondary);">Немає маршрутів</div>';
+        } else {
+            pcList.innerHTML = routes.map((sheet, idx) => {
+                const name = (sheet.sheetName || '').replace('Маршрут_', '');
+                const rows = sheet.rows || [];
+                const pax = rows.filter(r => (r['Тип запису'] || '').includes('Пасажир')).length;
+                const parcels = rows.filter(r => (r['Тип запису'] || '').includes('Посилк')).length;
+                const isActive = activeRouteIdx === idx && currentView === 'routes';
+                return `<div class="pc-sidebar-item route-sidebar-item${isActive ? ' active' : ''}" onclick="openRoute(${idx})" style="position:relative;">
+                    <span>
+                        <span class="item-icon">🗺️</span>
+                        <span class="item-text">${name}</span>
+                    </span>
+                    <span style="display:flex;align-items:center;gap:4px;">
+                        <span class="item-count" style="font-size:9px;">👤${pax} 📦${parcels}</span>
+                        <button class="route-delete-btn" onclick="event.stopPropagation(); confirmDeleteRoute(${idx})" title="Видалити маршрут">✕</button>
+                    </span>
+                </div>`;
+            }).join('');
+        }
+    }
+    // Mobile sidebar
+    const mobList = document.getElementById('mobileRoutesList');
+    if (mobList) {
+        if (routes.length === 0) {
+            mobList.innerHTML = '<div style="padding:8px 14px;font-size:11px;color:rgba(255,255,255,0.5);">Немає маршрутів</div>';
+        } else {
+            mobList.innerHTML = routes.map((sheet, idx) => {
+                const name = (sheet.sheetName || '').replace('Маршрут_', '');
+                const rows = sheet.rows || [];
+                const pax = rows.filter(r => (r['Тип запису'] || '').includes('Пасажир')).length;
+                const parcels = rows.filter(r => (r['Тип запису'] || '').includes('Посилк')).length;
+                return `<div class="side-menu-item" onclick="openRoute(${idx}); closeSideMenu();" style="padding:8px 14px;font-size:12px;">
+                    <span class="side-menu-item-left">🗺️ ${name}</span>
+                    <span style="font-size:10px;opacity:0.8;">👤${pax} 📦${parcels}</span>
+                </div>`;
+            }).join('') + `<div class="side-menu-item" onclick="promptCreateRoute(); closeSideMenu();" style="color:#7c3aed;padding:8px 14px;font-size:12px;">
+                <span class="side-menu-item-left">➕ Новий маршрут</span>
+            </div>`;
+        }
+    }
+}
+
+function toggleMobileRoutesList() {
+    const el = document.getElementById('mobileRoutesList');
+    if (!el) return;
+    if (el.style.display === 'none') {
+        el.style.display = 'block';
+        if (routes.length === 0) loadRoutes();
+    } else {
+        el.style.display = 'none';
+    }
+}
+
+// ── Відкрити конкретний маршрут ──
+function openRoute(idx) {
+    activeRouteIdx = idx;
+    showRoutesView();
+}
+
+// ── Рендер вмісту обраного маршруту ──
 function renderRoutes() {
     const list = document.getElementById('routesList');
+    const title = document.getElementById('routeViewTitle');
     if (!list) return;
+
     if (routes.length === 0) {
-        list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary);"><div style="font-size:40px;margin-bottom:8px;">🗺️</div><div style="font-size:13px;font-weight:600;">Активних маршрутів не знайдено</div><div style="font-size:11px;margin-top:4px;">Створіть новий маршрут</div></div>';
+        if (title) title.textContent = '🗺️ Маршрути';
+        list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary);"><div style="font-size:40px;margin-bottom:8px;">🗺️</div><div style="font-size:13px;font-weight:600;">Активних маршрутів не знайдено</div><div style="font-size:11px;margin-top:4px;">Створіть новий маршрут через меню зліва</div></div>';
         return;
     }
 
-    // Загальна статистика (тільки маршрути)
-    const totalRows = routes.reduce((s, r) => s + (r.rows || []).length, 0);
-    let html = `<div style="margin-bottom:14px;padding:10px 14px;background:#f0e6ff;border-radius:10px;font-size:12px;color:#5b21b6;font-weight:600;">
-        🗺️ Маршрути: ${routes.length} шт., ${totalRows} записів
+    // Якщо не обрано жодного маршруту — підказка
+    if (activeRouteIdx === null || activeRouteIdx >= routes.length) {
+        if (title) title.textContent = '🗺️ Маршрути';
+        list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary);"><div style="font-size:40px;margin-bottom:8px;">👈</div><div style="font-size:13px;font-weight:600;">Оберіть маршрут у меню зліва</div></div>';
+        return;
+    }
+
+    const sheet = routes[activeRouteIdx];
+    const rows = sheet.rows || [];
+    const name = sheet.sheetName || 'Маршрут';
+    const allCols = sheet.headers || [];
+    const displayCols = ROUTE_DISPLAY_COLS.filter(c => allCols.includes(c));
+    const cols = displayCols.length > 0 ? displayCols : allCols.slice(0, 12);
+
+    const paxCount = rows.filter(r => (r['Тип запису'] || '').includes('Пасажир')).length;
+    const parcelCount = rows.filter(r => (r['Тип запису'] || '').includes('Посилк')).length;
+
+    if (title) title.textContent = '🗺️ ' + name.replace('Маршрут_', '');
+
+    let html = `<div style="margin-bottom:14px;padding:10px 14px;background:#f0e6ff;border-radius:10px;font-size:12px;color:#5b21b6;font-weight:600;display:flex;justify-content:space-between;align-items:center;">
+        <span>👤 ${paxCount} пасажирів · 📦 ${parcelCount} посилок · ${rows.length} записів</span>
     </div>`;
 
-    html += routes.map((sheet, idx) => {
-        const rows = sheet.rows || [];
-        const name = sheet.sheetName || ('Аркуш ' + (idx + 1));
-        const allCols = sheet.headers || [];
-        // Показуємо скорочений набір колонок (ті що є в аркуші)
-        const displayCols = ROUTE_DISPLAY_COLS.filter(c => allCols.includes(c));
-        const cols = displayCols.length > 0 ? displayCols : allCols.slice(0, 12);
-
-        // Рахуємо статистику
-        const paxCount = rows.filter(r => (r['Тип запису'] || '').includes('Пасажир')).length;
-        const parcelCount = rows.filter(r => (r['Тип запису'] || '').includes('Посилк')).length;
-        const statusCounts = {};
-        rows.forEach(r => { const s = r['Статус'] || '—'; statusCounts[s] = (statusCounts[s] || 0) + 1; });
-
-        let statsHtml = '';
-        if (paxCount || parcelCount) {
-            statsHtml = `<span style="font-size:10px;opacity:0.85;margin-left:8px;">👤 ${paxCount} пас. · 📦 ${parcelCount} пос.</span>`;
-        }
-
-        return `<div class="route-sheet-card">
-            <div class="route-sheet-header" onclick="this.nextElementSibling.classList.toggle('open')">
-                <div>
-                    <span class="route-sheet-title">🗺️ ${name}</span>
-                    ${statsHtml}
-                </div>
-                <div style="display:flex;gap:8px;align-items:center;">
-                    <span class="route-sheet-count">${rows.length} записів</span>
-                    <span style="background:rgba(255,255,255,0.2);padding:3px 8px;border-radius:12px;font-size:10px;font-weight:700;">
-                        ${allCols.length} колонок
-                    </span>
-                </div>
-            </div>
-            <div class="route-sheet-body${idx === 0 ? ' open' : ''}">
-                ${rows.length === 0 ? '<div style="padding:16px;text-align:center;color:var(--text-secondary);font-size:12px;">Порожній аркуш</div>' :
-                `<div style="overflow-x:auto;"><table class="route-sheet-table">
-                    <thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr></thead>
-                    <tbody>${rows.map(r => `<tr>${cols.map(c => {
-                        let val = r[c] ?? '';
-                        // Кольорове виділення статусів
-                        if (c === 'Статус оплати' && val === 'Оплачено') val = '<span style="color:#059669;font-weight:700;">' + val + '</span>';
-                        if (c === 'Статус оплати' && val === 'Не оплачено') val = '<span style="color:#dc2626;font-weight:700;">' + val + '</span>';
-                        if (c === 'Тип запису' && String(val).includes('Пасажир')) val = '👤 ' + val;
-                        if (c === 'Тип запису' && String(val).includes('Посилк')) val = '📦 ' + val;
-                        return '<td>' + val + '</td>';
-                    }).join('')}</tr>`).join('')}</tbody>
-                </table></div>`}
-            </div>
-        </div>`;
-    }).join('');
+    if (rows.length === 0) {
+        html += '<div style="padding:40px;text-align:center;color:var(--text-secondary);font-size:13px;">Маршрут порожній — перенесіть ліди з пасажирів</div>';
+    } else {
+        html += `<div style="overflow-x:auto;"><table class="route-sheet-table">
+            <thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr></thead>
+            <tbody>${rows.map(r => `<tr>${cols.map(c => {
+                let val = r[c] ?? '';
+                if (c === 'Статус оплати' && val === 'Оплачено') val = '<span style="color:#059669;font-weight:700;">' + val + '</span>';
+                if (c === 'Статус оплати' && val === 'Не оплачено') val = '<span style="color:#dc2626;font-weight:700;">' + val + '</span>';
+                if (c === 'Тип запису' && String(val).includes('Пасажир')) val = '👤 ' + val;
+                if (c === 'Тип запису' && String(val).includes('Посилк')) val = '📦 ' + val;
+                return '<td>' + val + '</td>';
+            }).join('')}</tr>`).join('')}</tbody>
+        </table></div>`;
+    }
 
     list.innerHTML = html;
+    renderRouteSidebar(); // Оновити active стан в сайдбарі
+}
+
+// ── Створення нового маршруту ──
+function promptCreateRoute() {
+    const nameInput = prompt('Введіть назву нового маршруту:');
+    if (!nameInput || !nameInput.trim()) return;
+    const routeName = nameInput.trim();
+    createRoute(routeName);
+}
+
+async function createRoute(routeName) {
+    showLoader('Створення маршруту...');
+    try {
+        const res = await apiPost('createRoute', { name: routeName });
+        hideLoader();
+        if (res.ok) {
+            showToast('✅ Маршрут "' + routeName + '" створено');
+            await loadRoutes();
+        } else {
+            showToast('❌ ' + (res.error || 'Помилка створення'));
+        }
+    } catch (e) {
+        hideLoader();
+        showToast('❌ Помилка: ' + e.message);
+    }
+}
+
+// ── Видалення маршруту ──
+function confirmDeleteRoute(idx) {
+    const sheet = routes[idx];
+    if (!sheet) return;
+    const name = sheet.sheetName || '';
+    const baseName = name.replace('Маршрут_', '');
+
+    showConfirm('Ви впевнені, що хочете видалити маршрут "' + baseName + '"?\nВсі ліди з маршруту потраплять в архів.', async function(yes) {
+        if (!yes) return;
+        showLoader('Видалення маршруту...');
+        try {
+            const res = await apiPost('deleteRoute', { name: baseName });
+            hideLoader();
+            if (res.ok) {
+                showToast('✅ Маршрут "' + baseName + '" видалено');
+                // Запитаємо про видалення Відправки та Витрат
+                promptDeleteLinkedSheets(baseName);
+            } else {
+                showToast('❌ ' + (res.error || 'Помилка видалення'));
+            }
+        } catch (e) {
+            hideLoader();
+            showToast('❌ Помилка: ' + e.message);
+        }
+    });
+}
+
+function promptDeleteLinkedSheets(baseName) {
+    // Перевіряємо чи існують пов'язані аркуші
+    const hasDispatch = allRouteSheets.some(s => s.sheetName === 'Відправка ' + baseName || s.sheetName === 'Відправка_' + baseName);
+    const hasExpenses = allRouteSheets.some(s => s.sheetName === 'Витрати ' + baseName || s.sheetName === 'Витрати_' + baseName);
+
+    if (!hasDispatch && !hasExpenses) {
+        // Нічого пов'язаного — просто перезавантажуємо
+        if (activeRouteIdx !== null) activeRouteIdx = null;
+        loadRoutes();
+        return;
+    }
+
+    const sheets = [];
+    if (hasDispatch) sheets.push('Відправка');
+    if (hasExpenses) sheets.push('Витрати');
+
+    showConfirm('Видалити також пов\'язані аркуші (' + sheets.join(', ') + ') для "' + baseName + '"?', async function(yes) {
+        if (yes) {
+            showLoader('Видалення пов\'язаних аркушів...');
+            try {
+                await apiPost('deleteLinkedSheets', { name: baseName });
+                hideLoader();
+                showToast('✅ Пов\'язані аркуші видалено');
+            } catch (e) {
+                hideLoader();
+                showToast('❌ Помилка: ' + e.message);
+            }
+        }
+        if (activeRouteIdx !== null) activeRouteIdx = null;
+        loadRoutes();
+    });
 }
 
 function updatePcSidebarActive() {
-    ['pcAllPax','pcUaEu','pcEuUa','pcTrips','pcRoutes'].forEach(id => document.getElementById(id)?.classList.remove('active'));
+    ['pcAllPax','pcUaEu','pcEuUa','pcTrips'].forEach(id => document.getElementById(id)?.classList.remove('active'));
+    document.querySelectorAll('.route-sidebar-item').forEach(el => el.classList.remove('active'));
     if (currentView === 'routes') {
-        document.getElementById('pcRoutes')?.classList.add('active');
+        // active стан встановлюється в renderRouteSidebar
     } else if (currentView === 'trips') {
         document.getElementById('pcTrips')?.classList.add('active');
     } else {
@@ -1380,9 +1528,9 @@ function updatePcSidebarActive() {
 }
 
 function updateMobileSidebarActive() {
-    ['mobileAllPax','mobileUaEu','mobileEuUa','mobileTrips','mobileRoutes'].forEach(id => document.getElementById(id)?.classList.remove('active'));
+    ['mobileAllPax','mobileUaEu','mobileEuUa','mobileTrips'].forEach(id => document.getElementById(id)?.classList.remove('active'));
     if (currentView === 'routes') {
-        document.getElementById('mobileRoutes')?.classList.add('active');
+        // active стан через openRoute
     } else if (currentView === 'trips') {
         document.getElementById('mobileTrips')?.classList.add('active');
     } else {
