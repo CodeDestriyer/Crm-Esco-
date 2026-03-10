@@ -1,17 +1,30 @@
 // ================================================================
-// EscoExpress CRM v3.0 — UNIVERSAL GAS Backend (Final)
-// Таблиця: Passengers_crm_v4
-// ID: 1lgaCHqWBIa6oFjFWfD8m58sLwbvQjmeje2gx3YAnBCo
+// EscoExpress_Passengers.gs — CRM Пасажири (менеджери)
+// Живе в таблиці: Passengers_crm_v4
+// Deploy: Web App → доступ "Будь-хто"
 // ================================================================
-// Цей скрипт містить ВСІ можливі дії CRM.
-// Після deploy — більше не потрібно змінювати.
+// Архітектура: 4 окремі скрипти (Passengers, Posylki, Driver, Client)
+// Кожен має свій doPost, свій URL, свою чергу запитів.
 // ================================================================
 
-var SS_ID = '1lgaCHqWBIa6oFjFWfD8m58sLwbvQjmeje2gx3YAnBCo';
 var HEADER_ROW = 1;
 var DATA_START = 2;
 
-// ── SHEETS ──
+// ── ВСІ ТАБЛИЦІ СИСТЕМИ (SpreadsheetApp.openById) ──
+var DB = {
+  PASSENGERS: '1lgaCHqWBIa6oFjFWfD8m58sLwbvQjmeje2gx3YAnBCo',
+  POSYLKI:    '1_vfEhdLEM2SVTBiu_3eDilMs1HlKxvPrJBbiHYjgrJo',
+  MARHRUT:    '10SZhKV08BJyvWoMwhT0iddtWzYrDYFjCM8xgqViuE3Y',
+  KLIYENTU:   '1KW2Vh_E7OxggNB_NOzWmVM8siHzHr_mG8C939YXDC38',
+  FINANCE:    '1AhID7Ust45sA4PCAUjWJz515qnxzQGSj5wGQ7K8Jbu0',
+  CONFIG:     '1hZ67tuQYukugO_TjNsOS3IjovBR5hWMg-JmGAq5udBE',
+  ARCHIVE:    '19Ftljah5eX07RLHJaBrvYV7hStxspxcJVi6VATGZvF0'
+};
+
+// Головна таблиця цього скрипта
+var SS_ID = DB.PASSENGERS;
+
+// ── АРКУШІ в Passengers_crm_v4 ──
 var SHEETS = {
   PAX_UE: 'Україна-ЄВ',
   PAX_EU: 'Європа-УК',
