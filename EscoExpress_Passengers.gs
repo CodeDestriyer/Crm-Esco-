@@ -1514,6 +1514,128 @@ function apiGetRoutes(params) {
 
 
 // ══════════════════════════════════════════════════════════════
+// ROUTES — CRUD (Маршрути, Відправка, Витрати)
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * Додати ліди в аркуш маршруту
+ * data: { sheetName: 'Маршрут_Цюріх', leads: [{ 'Піб пасажира':'...', ... }] }
+ */
+function apiAddToRoute(params) {
+  var sheetName = params.sheetName;
+  var leads = params.leads;
+  if (!sheetName || !leads || !leads.length) {
+    return { ok: false, error: 'sheetName і leads обов\'язкові' };
+  }
+
+  var ss = SpreadsheetApp.openById(DB.MARHRUT);
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return { ok: false, error: 'Аркуш "' + sheetName + '" не знайдено' };
+
+  var lastCol = sheet.getLastColumn();
+  if (lastCol < 1) return { ok: false, error: 'Аркуш порожній (немає заголовків)' };
+
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h) { return String(h).trim(); });
+
+  for (var i = 0; i < leads.length; i++) {
+    var lead = leads[i];
+    var row = headers.map(function(h) { return lead[h] || ''; });
+    sheet.appendRow(row);
+  }
+
+  return { ok: true, added: leads.length };
+}
+
+/**
+ * Створити новий маршрут (копіює 3 шаблони: Маршрут_, Відправка_, Витрати_)
+ * data: { name: 'Цюріх_20260310' }
+ */
+function apiCreateRoute(params) {
+  var name = params.name;
+  if (!name || !name.trim()) return { ok: false, error: 'Назва маршруту обов\'язкова' };
+  name = name.trim();
+
+  var ss = SpreadsheetApp.openById(DB.MARHRUT);
+
+  // Перевірка чи вже існує
+  if (ss.getSheetByName('Маршрут_' + name)) {
+    return { ok: false, error: 'Маршрут "' + name + '" вже існує' };
+  }
+
+  // Копіюємо шаблони
+  var tplRoute = ss.getSheetByName('Маршрут_Шаблон');
+  var tplDispatch = ss.getSheetByName('Відправка_Шаблон');
+  var tplExpenses = ss.getSheetByName('Витрати_Шаблон');
+
+  if (tplRoute) {
+    var newRoute = tplRoute.copyTo(ss);
+    newRoute.setName('Маршрут_' + name);
+    newRoute.showSheet();
+  } else {
+    return { ok: false, error: 'Шаблон "Маршрут_Шаблон" не знайдено' };
+  }
+
+  if (tplDispatch) {
+    var newDisp = tplDispatch.copyTo(ss);
+    newDisp.setName('Відправка_' + name);
+    newDisp.showSheet();
+  }
+
+  if (tplExpenses) {
+    var newExp = tplExpenses.copyTo(ss);
+    newExp.setName('Витрати_' + name);
+    newExp.showSheet();
+  }
+
+  return { ok: true, created: ['Маршрут_' + name, 'Відправка_' + name, 'Витрати_' + name] };
+}
+
+/**
+ * Видалити маршрут (аркуш Маршрут_назва)
+ * data: { name: 'Цюріх_20260310' }
+ */
+function apiDeleteRoute(params) {
+  var name = params.name;
+  if (!name) return { ok: false, error: 'Назва маршруту обов\'язкова' };
+
+  var ss = SpreadsheetApp.openById(DB.MARHRUT);
+  var sheet = ss.getSheetByName('Маршрут_' + name);
+  if (!sheet) return { ok: false, error: 'Маршрут "' + name + '" не знайдено' };
+
+  // Перевіряємо що це не останній аркуш
+  if (ss.getSheets().length <= 1) {
+    return { ok: false, error: 'Неможливо видалити останній аркуш' };
+  }
+
+  ss.deleteSheet(sheet);
+  return { ok: true };
+}
+
+/**
+ * Видалити пов'язані аркуші Відправка та Витрати
+ * data: { name: 'Цюріх_20260310' }
+ */
+function apiDeleteLinkedSheets(params) {
+  var name = params.name;
+  if (!name) return { ok: false, error: 'Назва обов\'язкова' };
+
+  var ss = SpreadsheetApp.openById(DB.MARHRUT);
+  var deleted = [];
+
+  // Пробуємо обидва формати: з _ та з пробілом
+  var variants = ['Відправка_' + name, 'Відправка ' + name, 'Витрати_' + name, 'Витрати ' + name];
+  for (var i = 0; i < variants.length; i++) {
+    var s = ss.getSheetByName(variants[i]);
+    if (s && ss.getSheets().length > 1) {
+      ss.deleteSheet(s);
+      deleted.push(variants[i]);
+    }
+  }
+
+  return { ok: true, deleted: deleted };
+}
+
+// ══════════════════════════════════════════════════════════════
 // doGet / doPost — UNIVERSAL ROUTER
 // ══════════════════════════════════════════════════════════════
 
@@ -1603,6 +1725,10 @@ function doPost(e) {
 
       // ── ROUTES (Marhrut_crm_v6) ──
       case 'getRoutes':          result = apiGetRoutes(body); break;
+      case 'addToRoute':         result = apiAddToRoute(body); break;
+      case 'createRoute':        result = apiCreateRoute(body); break;
+      case 'deleteRoute':        result = apiDeleteRoute(body); break;
+      case 'deleteLinkedSheets': result = apiDeleteLinkedSheets(body); break;
 
       // ── AUTOPARK ──
       case 'getAutopark':        result = apiGetAutopark(body); break;
@@ -1614,7 +1740,7 @@ function doPost(e) {
       case 'freeSeat':           result = apiFreeSeat(body); break;
 
       default:
-        result = { ok: false, error: 'Unknown action: ' + action + '. Available: getAll, getOne, getPassengersByTrip, getStats, checkDuplicates, suggestTrips, addPassenger, clonePassenger, updateField, updatePassenger, bulkUpdateField, assignTrip, unassignTrip, reassignTrip, deletePassenger, bulkDelete, archivePassenger, restorePassenger, moveDirection, getTrips, getTrip, createTrip, updateTrip, archiveTrip, deleteTrip, duplicateTrip, getRoutes, getAutopark, getAutoSeats, getSeating, assignSeat, freeSeat' };
+        result = { ok: false, error: 'Unknown action: ' + action + '. Available: getAll, getOne, getPassengersByTrip, getStats, checkDuplicates, suggestTrips, addPassenger, clonePassenger, updateField, updatePassenger, bulkUpdateField, assignTrip, unassignTrip, reassignTrip, deletePassenger, bulkDelete, archivePassenger, restorePassenger, moveDirection, getTrips, getTrip, createTrip, updateTrip, archiveTrip, deleteTrip, duplicateTrip, getRoutes, addToRoute, createRoute, deleteRoute, deleteLinkedSheets, getAutopark, getAutoSeats, getSeating, assignSeat, freeSeat' };
     }
   } catch (err) {
     result = { ok: false, error: err.message };
