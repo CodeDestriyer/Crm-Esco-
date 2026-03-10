@@ -272,6 +272,19 @@
         /* TRIPS VIEW */
         .trips-view { display: none; }
         .trips-view.active { display: block; }
+
+        /* ROUTES VIEW */
+        .route-sheet-card { background:white; border:1px solid var(--border); border-radius:12px; margin-bottom:14px; overflow:hidden; }
+        .route-sheet-header { padding:14px 16px; background:linear-gradient(135deg,#7c3aed 0%,#a78bfa 100%); color:white; display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
+        .route-sheet-header:hover { opacity:0.95; }
+        .route-sheet-title { font-size:14px; font-weight:700; }
+        .route-sheet-count { background:rgba(255,255,255,0.25); padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700; }
+        .route-sheet-body { padding:0; max-height:0; overflow:hidden; transition:max-height 0.3s ease; }
+        .route-sheet-body.open { max-height:2000px; padding:12px; }
+        .route-sheet-table { width:100%; border-collapse:collapse; font-size:11px; }
+        .route-sheet-table th { text-align:left; padding:6px 8px; background:#f8fafc; border-bottom:2px solid var(--border); font-size:10px; text-transform:uppercase; color:var(--text-secondary); font-weight:700; }
+        .route-sheet-table td { padding:6px 8px; border-bottom:1px solid #f1f5f9; }
+        .route-sheet-table tr:hover td { background:#f8fafc; }
         .passengers-view { display: block; }
         .passengers-view.hidden { display: none; }
 
@@ -719,6 +732,11 @@
             <span class="side-menu-item-count" id="mobileCountTrips">0</span>
         </div>
         <div style="height:1px;background:rgba(255,255,255,0.1);margin:8px 0;"></div>
+        <div class="side-menu-item" id="mobileRoutes" onclick="showRoutesView(); closeSideMenu();" style="background:rgba(124,58,237,0.3);">
+            <span class="side-menu-item-left">🗺️ Маршрути</span>
+            <span class="side-menu-item-count" id="mobileCountRoutes">0</span>
+        </div>
+        <div style="height:1px;background:rgba(255,255,255,0.1);margin:8px 0;"></div>
         <div class="side-menu-item" onclick="openAddModal(); closeSideMenu();" style="color:#10b981;">
             <span class="side-menu-item-left">➕ Новий пасажир</span>
         </div>
@@ -816,6 +834,20 @@
             </div>
         </div>
 
+        <!-- Маршрути -->
+        <div class="pc-sidebar-section">
+            <div class="pc-sidebar-header" onclick="togglePcSection('routes')">
+                <span class="pc-sidebar-title">🗺️ Маршрути</span>
+                <span class="pc-sidebar-toggle" id="pcToggleRoutes">▼</span>
+            </div>
+            <div class="pc-sidebar-content" id="pcSectionRoutes">
+                <div class="pc-sidebar-item" id="pcRoutes" onclick="showRoutesView()" style="color:#7c3aed;font-weight:600;">
+                    <span><span class="item-icon">🗺️</span><span class="item-text">Аркуші маршрутів</span></span>
+                    <span class="item-count" id="pcCountRoutes">0</span>
+                </div>
+            </div>
+        </div>
+
         <!-- Дії -->
         <div class="pc-sidebar-section">
             <div style="padding:14px;">
@@ -860,6 +892,17 @@
             </div>
             <div class="trips-grid" id="tripsGrid"></div>
         </div>
+
+        <!-- ROUTES VIEW -->
+        <div class="routes-view" id="routesView" style="display:none;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+                <h2 style="margin:0;font-size:18px;color:var(--text-primary);">🗺️ Аркуші маршрутів</h2>
+                <button class="bs-btn" style="background:var(--primary);color:white;font-size:11px;padding:8px 14px;" onclick="loadRoutes()">🔄 Оновити</button>
+            </div>
+            <div id="routesLoading" style="display:none;text-align:center;padding:40px;color:var(--text-secondary);font-size:13px;">⏳ Завантаження маршрутів...</div>
+            <div id="routesError" style="display:none;text-align:center;padding:40px;color:#dc2626;font-size:13px;"></div>
+            <div id="routesList"></div>
+        </div>
     </main>
 </div>
 
@@ -874,7 +917,7 @@
 <!-- BOTTOM NAV (Mobile) -->
 <nav class="bottom-nav">
     <button class="nav-item active" id="navPax" onclick="showPaxView('all')"><span>👥</span>Пасажири</button>
-    <button class="nav-item" onclick="window.location.href='index_posylki.html'"><span>📦</span>Посилки</button>
+    <button class="nav-item" id="navRoutes" onclick="showRoutesView()"><span>🗺️</span>Маршрути</button>
     <button class="nav-item" onclick="silentSync()"><span>🔄</span>Синхр.</button>
     <button class="nav-item" onclick="openColumnConfigurator()"><span>⚙️</span>Колонки</button>
     <button class="nav-item" onclick="openAddModal()"><span>➕</span>Додати</button>
@@ -1089,7 +1132,8 @@ const LAYOUTS = {
 // ================================================================
 let passengers = [];
 let trips = [];
-let currentView = 'pax'; // 'pax' | 'trips'
+let routes = [];
+let currentView = 'pax'; // 'pax' | 'trips' | 'routes'
 let currentDir = 'all';
 let tripTimeFilter = 'future';
 let tripDirFilter = 'all';
@@ -1184,6 +1228,7 @@ function showPaxView(dir) {
     currentDir = dir || 'all';
     document.getElementById('passengersView').classList.remove('hidden');
     document.getElementById('tripsView').classList.remove('active');
+    document.getElementById('routesView').style.display = 'none';
     updatePcSidebarActive();
     updateMobileSidebarActive();
     updateNavActive('pax');
@@ -1194,15 +1239,84 @@ function showTripsView() {
     currentView = 'trips';
     document.getElementById('passengersView').classList.add('hidden');
     document.getElementById('tripsView').classList.add('active');
+    document.getElementById('routesView').style.display = 'none';
     updatePcSidebarActive();
     updateMobileSidebarActive();
     updateNavActive('trips');
     renderTrips();
 }
 
+function showRoutesView() {
+    currentView = 'routes';
+    document.getElementById('passengersView').classList.add('hidden');
+    document.getElementById('tripsView').classList.remove('active');
+    document.getElementById('routesView').style.display = 'block';
+    updatePcSidebarActive();
+    updateMobileSidebarActive();
+    updateNavActive('routes');
+    if (routes.length === 0) loadRoutes();
+    else renderRoutes();
+}
+
+async function loadRoutes() {
+    const loading = document.getElementById('routesLoading');
+    const errEl = document.getElementById('routesError');
+    const list = document.getElementById('routesList');
+    loading.style.display = 'block';
+    errEl.style.display = 'none';
+    list.innerHTML = '';
+
+    try {
+        const res = await apiPost('getRoutes', {});
+        loading.style.display = 'none';
+        if (res.ok && res.data) {
+            routes = res.data;
+            setCount('pcCountRoutes', routes.length);
+            setCount('mobileCountRoutes', routes.length);
+            renderRoutes();
+        } else {
+            errEl.style.display = 'block';
+            errEl.textContent = '❌ ' + (res.error || 'Сервер не повернув маршрутів. Можливо getRoutes ще не реалізовано в GAS.');
+        }
+    } catch (e) {
+        loading.style.display = 'none';
+        errEl.style.display = 'block';
+        errEl.textContent = '❌ Помилка запиту: ' + e.message;
+    }
+}
+
+function renderRoutes() {
+    const list = document.getElementById('routesList');
+    if (!list) return;
+    if (routes.length === 0) {
+        list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary);"><div style="font-size:40px;margin-bottom:8px;">🗺️</div><div style="font-size:13px;font-weight:600;">Аркушів маршрутів не знайдено</div><div style="font-size:11px;margin-top:4px;">Перевірте чи GAS повертає дані getRoutes</div></div>';
+        return;
+    }
+    list.innerHTML = routes.map((sheet, idx) => {
+        const rows = sheet.rows || [];
+        const name = sheet.sheetName || sheet.name || ('Маршрут ' + (idx + 1));
+        const cols = sheet.headers || (rows.length > 0 ? Object.keys(rows[0]) : []);
+        return `<div class="route-sheet-card">
+            <div class="route-sheet-header" onclick="this.nextElementSibling.classList.toggle('open')">
+                <span class="route-sheet-title">🗺️ ${name}</span>
+                <span class="route-sheet-count">${rows.length} записів</span>
+            </div>
+            <div class="route-sheet-body${idx === 0 ? ' open' : ''}">
+                ${rows.length === 0 ? '<div style="padding:16px;text-align:center;color:var(--text-secondary);font-size:12px;">Порожній аркуш</div>' :
+                `<div style="overflow-x:auto;"><table class="route-sheet-table">
+                    <thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr></thead>
+                    <tbody>${rows.map(r => `<tr>${cols.map(c => `<td>${r[c] ?? ''}</td>`).join('')}</tr>`).join('')}</tbody>
+                </table></div>`}
+            </div>
+        </div>`;
+    }).join('');
+}
+
 function updatePcSidebarActive() {
-    ['pcAllPax','pcUaEu','pcEuUa','pcTrips'].forEach(id => document.getElementById(id)?.classList.remove('active'));
-    if (currentView === 'trips') {
+    ['pcAllPax','pcUaEu','pcEuUa','pcTrips','pcRoutes'].forEach(id => document.getElementById(id)?.classList.remove('active'));
+    if (currentView === 'routes') {
+        document.getElementById('pcRoutes')?.classList.add('active');
+    } else if (currentView === 'trips') {
         document.getElementById('pcTrips')?.classList.add('active');
     } else {
         const map = { all:'pcAllPax', 'ua-eu':'pcUaEu', 'eu-ua':'pcEuUa' };
@@ -1211,8 +1325,10 @@ function updatePcSidebarActive() {
 }
 
 function updateMobileSidebarActive() {
-    ['mobileAllPax','mobileUaEu','mobileEuUa','mobileTrips'].forEach(id => document.getElementById(id)?.classList.remove('active'));
-    if (currentView === 'trips') {
+    ['mobileAllPax','mobileUaEu','mobileEuUa','mobileTrips','mobileRoutes'].forEach(id => document.getElementById(id)?.classList.remove('active'));
+    if (currentView === 'routes') {
+        document.getElementById('mobileRoutes')?.classList.add('active');
+    } else if (currentView === 'trips') {
         document.getElementById('mobileTrips')?.classList.add('active');
     } else {
         const map = { all:'mobileAllPax', 'ua-eu':'mobileUaEu', 'eu-ua':'mobileEuUa' };
@@ -1223,6 +1339,7 @@ function updateMobileSidebarActive() {
 function updateNavActive(tab) {
     document.getElementById('navPax')?.classList.toggle('active', tab === 'pax');
     document.getElementById('navTrips')?.classList.toggle('active', tab === 'trips');
+    document.getElementById('navRoutes')?.classList.toggle('active', tab === 'routes');
 }
 
 // ================================================================
