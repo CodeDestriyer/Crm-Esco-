@@ -923,7 +923,7 @@
 <!-- BOTTOM NAV (Mobile) -->
 <nav class="bottom-nav">
     <button class="nav-item active" id="navPax" onclick="showPaxView('all')"><span>👥</span>Пасажири</button>
-    <button class="nav-item" id="navRoutes" onclick="showRoutesView()"><span>🗺️</span>Маршрути</button>
+    <button class="nav-item" id="navParcels" onclick="window.open('Crm_Posylky.html','_blank')"><span>📦</span>Посилки</button>
     <button class="nav-item" onclick="silentSync()"><span>🔄</span>Синхр.</button>
     <button class="nav-item" onclick="openColumnConfigurator()"><span>⚙️</span>Колонки</button>
     <button class="nav-item" onclick="openAddModal()"><span>➕</span>Додати</button>
@@ -955,6 +955,19 @@
         <div class="modal-header"><span class="modal-title" id="paxModalTitle">➕ Новий пасажир</span><button class="modal-close" onclick="closeModal('passengerModal')">×</button></div>
         <div class="modal-body">
             <div class="duplicate-warning" id="duplicateWarning"></div>
+            <!-- SMS парсер -->
+            <div class="sms-parser-wrap" id="smsParserWrap">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                    <label style="font-size:11px;font-weight:700;color:var(--text-secondary);">📋 Вставте текст повідомлення</label>
+                    <button type="button" onclick="toggleSmsParser()" style="background:none;border:none;font-size:10px;color:var(--info);cursor:pointer;font-weight:600;font-family:inherit;" id="smsParserToggle">Згорнути ▲</button>
+                </div>
+                <div id="smsParserBody">
+                    <textarea id="smsInput" rows="3" placeholder="Наприклад: 12.03 два пасажири до Цюріха +380639763484 мама" style="width:100%;padding:10px;border:2px solid #e2e8f0;border-radius:8px;font-size:12px;font-family:inherit;resize:vertical;box-sizing:border-box;"></textarea>
+                    <button type="button" onclick="parseSmsText()" style="width:100%;margin-top:6px;padding:8px;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🔍 Розпізнати та заповнити</button>
+                    <div id="smsParseResult" style="display:none;margin-top:6px;padding:8px 10px;background:#f0fdf4;border-radius:8px;font-size:11px;color:#059669;font-weight:600;"></div>
+                </div>
+            </div>
+            <div style="height:1px;background:var(--border);margin:10px 0;"></div>
             <div class="form-group"><label>Напрямок <span style="color:var(--danger)">*</span></label>
                 <select id="fDirection"><option value="ua-eu">🇺🇦→🇪🇺 Україна-Європа</option><option value="eu-ua">🇪🇺→🇺🇦 Європа-Україна</option></select>
             </div>
@@ -1542,7 +1555,6 @@ function updateMobileSidebarActive() {
 function updateNavActive(tab) {
     document.getElementById('navPax')?.classList.toggle('active', tab === 'pax');
     document.getElementById('navTrips')?.classList.toggle('active', tab === 'trips');
-    document.getElementById('navRoutes')?.classList.toggle('active', tab === 'routes');
 }
 
 // ================================================================
@@ -1954,6 +1966,7 @@ function openEditPax(id) {
     editingPaxId = id; // Запам'ятовуємо який лід редагуємо
 
     document.getElementById('paxModalTitle').textContent = '✏️ Редагувати пасажира';
+    document.getElementById('smsParserWrap').style.display = 'none'; // Ховаємо SMS парсер при редагуванні
     document.getElementById('duplicateWarning').className = 'duplicate-warning';
     document.getElementById('duplicateWarning').textContent = '';
 
@@ -2100,9 +2113,156 @@ function openAddModal() {
     document.getElementById('fSeats').value = '1';
     document.getElementById('fDate').value = '';
     document.getElementById('fDirection').value = currentDir === 'eu-ua' ? 'eu-ua' : 'ua-eu';
+    // Скидаємо SMS парсер
+    document.getElementById('smsInput').value = '';
+    document.getElementById('smsParseResult').style.display = 'none';
+    document.getElementById('smsParserBody').style.display = 'block';
+    document.getElementById('smsParserToggle').textContent = 'Згорнути ▲';
+    document.getElementById('smsParserWrap').style.display = 'block';
     const saveBtn = document.getElementById('paxSaveBtn');
     if (saveBtn) saveBtn.textContent = '💾 Зберегти';
     openModal('passengerModal');
+}
+
+// ================================================================
+// SMS PARSER — розпізнавання тексту повідомлення
+// ================================================================
+function toggleSmsParser() {
+    const body = document.getElementById('smsParserBody');
+    const btn = document.getElementById('smsParserToggle');
+    if (body.style.display === 'none') {
+        body.style.display = 'block';
+        btn.textContent = 'Згорнути ▲';
+    } else {
+        body.style.display = 'none';
+        btn.textContent = 'Розгорнути ▼';
+    }
+}
+
+// Словник міст для розпізнавання напряму та адреси
+const KNOWN_CITIES_EU = ['цюріх','женева','берн','базель','люцерн','лозанна','берлін','мюнхен','франкфурт','гамбург','відень','прага','варшава','краків','вроцлав','братислава','будапешт','бухарест','мілан','рим','париж','амстердам','брюссель'];
+const KNOWN_CITIES_UA = ['київ','львів','одеса','харків','дніпро','запоріжжя','вінниця','тернопіль','івано-франківськ','рівне','луцьк','чернівці','ужгород','мукачево','хмельницький','полтава','черкаси','житомир','суми','миколаїв','херсон','кропивницький','чернігів'];
+
+// Словник кількості
+const NUM_WORDS = {'один':1,'одна':1,'одного':1,'два':2,'дві':2,'двох':2,'три':3,'трьох':3,'чотири':4,'чотирьох':4,"п'ять":5,'пять':5,'шість':6,'сім':7,'вісім':8,"дев'ять":9,'десять':10};
+
+function parseSmsText() {
+    const raw = document.getElementById('smsInput').value.trim();
+    if (!raw) return;
+
+    const text = raw.toLowerCase();
+    const result = [];
+
+    // 1. Дата: шукаємо формати dd.mm, dd.mm.yy, dd.mm.yyyy, dd/mm
+    const dateMatch = text.match(/(\d{1,2})[\.\/](\d{1,2})(?:[\.\/](\d{2,4}))?/);
+    if (dateMatch) {
+        let day = dateMatch[1].padStart(2, '0');
+        let month = dateMatch[2].padStart(2, '0');
+        let year = dateMatch[3] || new Date().getFullYear().toString();
+        if (year.length === 2) year = '20' + year;
+        const dateStr = year + '-' + month + '-' + day;
+        document.getElementById('fDate').value = dateStr;
+        result.push('📅 Дата: ' + day + '.' + month + '.' + year);
+        onDateChanged();
+    }
+
+    // 2. Телефон: +380..., 380..., 0XX...
+    const phoneMatch = raw.match(/\+?3?8?(0\d{9})/);
+    if (phoneMatch) {
+        const phone = '+380' + phoneMatch[1].slice(1);
+        document.getElementById('fPhone').value = phone;
+        result.push('📞 Телефон: ' + phone);
+    }
+
+    // 3. Кількість місць
+    let seats = 1;
+    const seatsNumMatch = text.match(/(\d+)\s*(?:пасажир|місц|особ|людин|чоловік)/);
+    if (seatsNumMatch) {
+        seats = parseInt(seatsNumMatch[1]);
+    } else {
+        for (const [word, num] of Object.entries(NUM_WORDS)) {
+            if (text.includes(word + ' пасажир') || text.includes(word + ' місц') || text.includes(word + ' особ') || text.includes(word + ' людин')) {
+                seats = num; break;
+            }
+        }
+    }
+    if (seats > 1) {
+        document.getElementById('fSeats').value = seats;
+        result.push('💺 Місць: ' + seats);
+    }
+
+    // 4. Міста — визначаємо напрям та адреси
+    let fromCity = '', toCity = '', direction = '';
+
+    // Шукаємо формат "Місто-Місто" або "Місто до Місто" або "з Місто в Місто"
+    const routeMatch = text.match(/(?:з\s+)?(\S+)\s*[-–—]\s*(\S+)/);
+    const toMatch = text.match(/(?:до|в|на)\s+([а-яіїєґ']+)/i);
+    const fromMatch = text.match(/(?:з|від|із)\s+([а-яіїєґ']+)/i);
+
+    // Перевірка всіх відомих міст у тексті
+    const foundEU = KNOWN_CITIES_EU.filter(c => text.includes(c));
+    const foundUA = KNOWN_CITIES_UA.filter(c => text.includes(c));
+
+    if (routeMatch) {
+        const c1 = routeMatch[1].replace(/[,.:]/g, '');
+        const c2 = routeMatch[2].replace(/[,.:]/g, '');
+        const c1isUA = KNOWN_CITIES_UA.some(c => c1.includes(c));
+        const c2isEU = KNOWN_CITIES_EU.some(c => c2.includes(c));
+        const c1isEU = KNOWN_CITIES_EU.some(c => c1.includes(c));
+        const c2isUA = KNOWN_CITIES_UA.some(c => c2.includes(c));
+        if (c1isUA && c2isEU) { fromCity = c1; toCity = c2; direction = 'ua-eu'; }
+        else if (c1isEU && c2isUA) { fromCity = c1; toCity = c2; direction = 'eu-ua'; }
+        else { fromCity = c1; toCity = c2; }
+    } else {
+        if (toMatch) toCity = toMatch[1];
+        if (fromMatch) fromCity = fromMatch[1];
+        if (!fromCity && foundUA.length > 0) fromCity = foundUA[0];
+        if (!toCity && foundEU.length > 0) toCity = foundEU[0];
+    }
+
+    // Визначаємо напрям якщо ще не визначено
+    if (!direction) {
+        const toCityLower = toCity.toLowerCase();
+        const fromCityLower = fromCity.toLowerCase();
+        if (KNOWN_CITIES_EU.some(c => toCityLower.includes(c))) direction = 'ua-eu';
+        else if (KNOWN_CITIES_UA.some(c => toCityLower.includes(c))) direction = 'eu-ua';
+        else if (KNOWN_CITIES_UA.some(c => fromCityLower.includes(c))) direction = 'ua-eu';
+        else if (KNOWN_CITIES_EU.some(c => fromCityLower.includes(c))) direction = 'eu-ua';
+    }
+
+    if (direction) {
+        document.getElementById('fDirection').value = direction;
+        result.push('🧭 Напрям: ' + (direction === 'ua-eu' ? 'UA→EU' : 'EU→UA'));
+    }
+    if (fromCity) {
+        const cap = fromCity.charAt(0).toUpperCase() + fromCity.slice(1);
+        document.getElementById('fFrom').value = cap;
+        result.push('📍 Звідки: ' + cap);
+    }
+    if (toCity) {
+        const cap = toCity.charAt(0).toUpperCase() + toCity.slice(1);
+        document.getElementById('fTo').value = cap;
+        result.push('📍 Куди: ' + cap);
+    }
+
+    // 5. Час: шукаємо HH:MM
+    const timeMatch = text.match(/(\d{1,2}):(\d{2})(?!\d)/);
+    if (timeMatch && parseInt(timeMatch[1]) < 24) {
+        document.getElementById('fTiming').value = timeMatch[1].padStart(2,'0') + ':' + timeMatch[2];
+        result.push('🕐 Час: ' + timeMatch[1].padStart(2,'0') + ':' + timeMatch[2]);
+    }
+
+    // Показуємо результат
+    const resEl = document.getElementById('smsParseResult');
+    if (result.length > 0) {
+        resEl.style.display = 'block';
+        resEl.innerHTML = '✅ Розпізнано: ' + result.join(' · ');
+    } else {
+        resEl.style.display = 'block';
+        resEl.style.background = '#fef2f2';
+        resEl.style.color = '#dc2626';
+        resEl.textContent = '⚠️ Не вдалось розпізнати дані. Заповніть форму вручну.';
+    }
 }
 
 // ================================================================
