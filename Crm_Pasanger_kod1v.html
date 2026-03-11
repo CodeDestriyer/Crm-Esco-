@@ -1263,12 +1263,92 @@
             </div>
             <div class="optimize-section">
                 <label class="optimize-label">📍 Точка старту:</label>
-                <input type="text" class="optimize-input" id="optimizeStart" placeholder="Залиште пустим → Ужгород">
+                <select class="optimize-input" id="optimizeStartSelect" onchange="onOptPointSelect('start')">
+                    <optgroup label="🅿️ Паркінги / Ночівлі">
+                        <option value="">— Оберіть точку —</option>
+                        <option value="Im Gsteig 1, Kusnacht ZH 8700, Switzerland">🛏️ Цюрих ночівля (Sonnenhof, Küsnacht)</option>
+                        <option value="Dorflistrasse 90, 8050 Zürich, Switzerland">🅿️ Цюрих (Parking Theater 11)</option>
+                        <option value="Bahnhofplatz, 6300 Zug, Switzerland">🅿️ Цуг (Bahnhofplatz)</option>
+                        <option value="Tourist Bus Parking Landenberg, Alpenquai, 6005 Luzern, Switzerland">🅿️ Люцерн (Landenberg)</option>
+                        <option value="Parkplatz 7c, Beundenfeld, 3014 Bern, Switzerland">🅿️ Берн (Beundenfeld)</option>
+                        <option value="Meret Oppenheim Strasse, SBB Station, 4053 Basel, Switzerland">🅿️ Базель (SBB Station)</option>
+                        <option value="Bahnhofplatz 8b, 9000 St. Gallen, Switzerland">🅿️ Сен-Гален (Bahnhofplatz)</option>
+                        <option value="Avenue des Roses 13, 1009 Pully, Switzerland">🛏️ Женева ночівля (Pully)</option>
+                        <option value="Avenue du Grey 43, 1004 Lausanne, Switzerland">🅿️ Лозана (паркінг)</option>
+                        <option value="Route des Châtaigniers 7, 1816 Montreux, Switzerland">🅿️ Монтре</option>
+                        <option value="P+R Bout-du-Monde, Route de Vessy 12, 1206 Genève, Switzerland">🅿️ Женева (P+R Bout-du-Monde)</option>
+                    </optgroup>
+                    <optgroup label="🚂 Вокзали (Французька Швейцарія)">
+                        <option value="Gare de Genève-Cornavin, Genève, Switzerland">🚂 Geneva (Gare Cornavin)</option>
+                        <option value="Gare de Nyon, Nyon, Switzerland">🚂 Nyon</option>
+                        <option value="Gare de Lausanne, Lausanne, Switzerland">🚂 Lausanne</option>
+                        <option value="Gare de Vevey, Vevey, Switzerland">🚂 Vevey</option>
+                        <option value="Gare de Montreux, Montreux, Switzerland">🚂 Montreux</option>
+                        <option value="Gare d'Yverdon-les-Bains, Yverdon, Switzerland">🚂 Yverdon</option>
+                        <option value="Gare de Fribourg, Fribourg, Switzerland">🚂 Fribourg</option>
+                        <option value="Gare de Payerne, Payerne, Switzerland">🚂 Payerne</option>
+                        <option value="Bern Bahnhof, Bern, Switzerland">🚂 Bern</option>
+                    </optgroup>
+                    <optgroup label="🚂 Вокзали (Німецька Швейцарія)">
+                        <option value="Bahnhof Oftringen, Oftringen, Switzerland">🚂 Oftringen</option>
+                        <option value="Bahnhof Aarau, Aarau, Switzerland">🚂 Aarau</option>
+                        <option value="Bahnhof Baden, Baden, Switzerland">🚂 Baden</option>
+                        <option value="Bahnhof Wettingen, Wettingen, Switzerland">🚂 Wettingen</option>
+                        <option value="Zürich HB, Zürich, Switzerland">🚂 Zürich HB</option>
+                        <option value="Bahnhof Winterthur, Winterthur, Switzerland">🚂 Winterthur</option>
+                        <option value="Bahnhof Wil, Wil SG, Switzerland">🚂 Wil</option>
+                        <option value="Bahnhof St. Gallen, St. Gallen, Switzerland">🚂 St. Gallen</option>
+                    </optgroup>
+                    <optgroup label="✏️ Інше">
+                        <option value="__custom__">✏️ Ввести вручну...</option>
+                    </optgroup>
+                </select>
+                <input type="text" class="optimize-input" id="optimizeStart" placeholder="Введіть адресу старту..." style="display:none;margin-top:6px;">
                 <small class="optimize-hint">Звідки починається маршрут</small>
             </div>
             <div class="optimize-section">
                 <label class="optimize-label">🏁 Точка закінчення:</label>
-                <input type="text" class="optimize-input" id="optimizeEnd" placeholder="Залиште пустим → остання точка">
+                <select class="optimize-input" id="optimizeEndSelect" onchange="onOptPointSelect('end')">
+                    <optgroup label="🅿️ Паркінги / Ночівлі">
+                        <option value="">— Остання точка маршруту —</option>
+                        <option value="Im Gsteig 1, Kusnacht ZH 8700, Switzerland">🛏️ Цюрих ночівля (Sonnenhof, Küsnacht)</option>
+                        <option value="Dorflistrasse 90, 8050 Zürich, Switzerland">🅿️ Цюрих (Parking Theater 11)</option>
+                        <option value="Bahnhofplatz, 6300 Zug, Switzerland">🅿️ Цуг (Bahnhofplatz)</option>
+                        <option value="Tourist Bus Parking Landenberg, Alpenquai, 6005 Luzern, Switzerland">🅿️ Люцерн (Landenberg)</option>
+                        <option value="Parkplatz 7c, Beundenfeld, 3014 Bern, Switzerland">🅿️ Берн (Beundenfeld)</option>
+                        <option value="Meret Oppenheim Strasse, SBB Station, 4053 Basel, Switzerland">🅿️ Базель (SBB Station)</option>
+                        <option value="Bahnhofplatz 8b, 9000 St. Gallen, Switzerland">🅿️ Сен-Гален (Bahnhofplatz)</option>
+                        <option value="Avenue des Roses 13, 1009 Pully, Switzerland">🛏️ Женева ночівля (Pully)</option>
+                        <option value="Avenue du Grey 43, 1004 Lausanne, Switzerland">🅿️ Лозана (паркінг)</option>
+                        <option value="Route des Châtaigniers 7, 1816 Montreux, Switzerland">🅿️ Монтре</option>
+                        <option value="P+R Bout-du-Monde, Route de Vessy 12, 1206 Genève, Switzerland">🅿️ Женева (P+R Bout-du-Monde)</option>
+                    </optgroup>
+                    <optgroup label="🚂 Вокзали (Французька Швейцарія)">
+                        <option value="Gare de Genève-Cornavin, Genève, Switzerland">🚂 Geneva (Gare Cornavin)</option>
+                        <option value="Gare de Nyon, Nyon, Switzerland">🚂 Nyon</option>
+                        <option value="Gare de Lausanne, Lausanne, Switzerland">🚂 Lausanne</option>
+                        <option value="Gare de Vevey, Vevey, Switzerland">🚂 Vevey</option>
+                        <option value="Gare de Montreux, Montreux, Switzerland">🚂 Montreux</option>
+                        <option value="Gare d'Yverdon-les-Bains, Yverdon, Switzerland">🚂 Yverdon</option>
+                        <option value="Gare de Fribourg, Fribourg, Switzerland">🚂 Fribourg</option>
+                        <option value="Gare de Payerne, Payerne, Switzerland">🚂 Payerne</option>
+                        <option value="Bern Bahnhof, Bern, Switzerland">🚂 Bern</option>
+                    </optgroup>
+                    <optgroup label="🚂 Вокзали (Німецька Швейцарія)">
+                        <option value="Bahnhof Oftringen, Oftringen, Switzerland">🚂 Oftringen</option>
+                        <option value="Bahnhof Aarau, Aarau, Switzerland">🚂 Aarau</option>
+                        <option value="Bahnhof Baden, Baden, Switzerland">🚂 Baden</option>
+                        <option value="Bahnhof Wettingen, Wettingen, Switzerland">🚂 Wettingen</option>
+                        <option value="Zürich HB, Zürich, Switzerland">🚂 Zürich HB</option>
+                        <option value="Bahnhof Winterthur, Winterthur, Switzerland">🚂 Winterthur</option>
+                        <option value="Bahnhof Wil, Wil SG, Switzerland">🚂 Wil</option>
+                        <option value="Bahnhof St. Gallen, St. Gallen, Switzerland">🚂 St. Gallen</option>
+                    </optgroup>
+                    <optgroup label="✏️ Інше">
+                        <option value="__custom__">✏️ Ввести вручну...</option>
+                    </optgroup>
+                </select>
+                <input type="text" class="optimize-input" id="optimizeEnd" placeholder="Введіть адресу фінішу..." style="display:none;margin-top:6px;">
                 <small class="optimize-hint">Де закінчується маршрут (необов'язково)</small>
             </div>
             <div class="optimize-method">
@@ -4612,8 +4692,13 @@ function openOptimizeModal(passengersList) {
     optimizePassengersList = passengersList;
     optimizeBy = 'from';
     document.getElementById('optimizeCount').textContent = passengersList.length;
+    // Reset selects and custom inputs
+    document.getElementById('optimizeStartSelect').value = '';
+    document.getElementById('optimizeEndSelect').value = '';
     document.getElementById('optimizeStart').value = '';
     document.getElementById('optimizeEnd').value = '';
+    document.getElementById('optimizeStart').style.display = 'none';
+    document.getElementById('optimizeEnd').style.display = 'none';
     document.getElementById('optFrom').classList.add('selected');
     document.getElementById('optTo').classList.remove('selected');
     document.getElementById('optimizeFormBody').style.display = 'block';
@@ -4622,6 +4707,27 @@ function openOptimizeModal(passengersList) {
     document.getElementById('optimizeFormFooter').style.display = 'flex';
     document.getElementById('optimizeResultFooter').style.display = 'none';
     document.getElementById('optimizeModal').classList.add('show');
+}
+
+// Handle point select (show/hide custom input)
+function onOptPointSelect(which) {
+    const sel = document.getElementById(which === 'start' ? 'optimizeStartSelect' : 'optimizeEndSelect');
+    const inp = document.getElementById(which === 'start' ? 'optimizeStart' : 'optimizeEnd');
+    if (sel.value === '__custom__') {
+        inp.style.display = 'block';
+        inp.focus();
+    } else {
+        inp.style.display = 'none';
+        inp.value = '';
+    }
+}
+
+// Get selected address (from select or custom input)
+function getOptAddress(which) {
+    const sel = document.getElementById(which === 'start' ? 'optimizeStartSelect' : 'optimizeEndSelect');
+    const inp = document.getElementById(which === 'start' ? 'optimizeStart' : 'optimizeEnd');
+    if (sel.value === '__custom__') return inp.value.trim();
+    return sel.value || '';
 }
 
 function selectOptimizeBy(by) {
@@ -4807,8 +4913,8 @@ async function startOptimization() {
         if (pr && progress !== undefined) pr.textContent = progress;
     }
 
-    const startAddress = document.getElementById('optimizeStart').value.trim() || 'Ужгород';
-    const endAddress = document.getElementById('optimizeEnd').value.trim();
+    const startAddress = getOptAddress('start') || 'Ужгород';
+    const endAddress = getOptAddress('end');
     const addrField = optimizeBy === 'from' ? 'Адреса відправки' : 'Адреса прибуття';
     const optimizeLabel = optimizeBy === 'from' ? 'Адреса ВІДПРАВКИ' : 'Адреса ПРИБУТТЯ';
 
