@@ -861,11 +861,11 @@
     <aside class="pc-sidebar" id="pcSidebar">
         <!-- Пасажири -->
         <div class="pc-sidebar-section">
-            <div class="pc-sidebar-header" onclick="togglePcSection('pax')">
-                <span class="pc-sidebar-title">👥 Пасажири</span>
+            <div class="pc-sidebar-header collapsed" onclick="togglePcSection('pax')">
+                <span class="pc-sidebar-title">👥 ПАСАЖИРИ</span>
                 <span class="pc-sidebar-toggle" id="pcTogglePax">▼</span>
             </div>
-            <div class="pc-sidebar-content" id="pcSectionPax">
+            <div class="pc-sidebar-content collapsed" id="pcSectionPax">
                 <div class="pc-sidebar-item active" id="pcAllPax" onclick="showPaxView('all')">
                     <span><span class="item-icon">📊</span><span class="item-text">Всі</span></span>
                     <span class="item-count" id="pcCountAll">0</span>
@@ -913,11 +913,11 @@
 
         <!-- Рейси -->
         <div class="pc-sidebar-section">
-            <div class="pc-sidebar-header" onclick="togglePcSection('trips')">
-                <span class="pc-sidebar-title">🚐 Рейси</span>
+            <div class="pc-sidebar-header collapsed" onclick="togglePcSection('trips')">
+                <span class="pc-sidebar-title">🚐 РЕЙСИ</span>
                 <span class="pc-sidebar-toggle" id="pcToggleTrips">▼</span>
             </div>
-            <div class="pc-sidebar-content" id="pcSectionTrips">
+            <div class="pc-sidebar-content collapsed" id="pcSectionTrips">
                 <div class="pc-sidebar-item trips-btn" id="pcTrips" onclick="showTripsView()">
                     <span><span class="item-icon">🚐</span><span class="item-text">Управління рейсами</span></span>
                     <span class="item-count" id="pcCountTrips">0</span>
@@ -930,11 +930,11 @@
 
         <!-- Маршрути -->
         <div class="pc-sidebar-section">
-            <div class="pc-sidebar-header" onclick="togglePcSection('routes')">
-                <span class="pc-sidebar-title">🗺️ Маршрути</span>
+            <div class="pc-sidebar-header collapsed" onclick="togglePcSection('routes')">
+                <span class="pc-sidebar-title">🗺️ МАРШРУТИ</span>
                 <span class="pc-sidebar-toggle" id="pcToggleRoutes">▼</span>
             </div>
-            <div class="pc-sidebar-content" id="pcSectionRoutes">
+            <div class="pc-sidebar-content collapsed" id="pcSectionRoutes">
                 <div id="pcRoutesLoading" style="padding:12px 14px;font-size:11px;color:var(--text-secondary);text-align:center;">
                     <span class="route-loading-spinner"></span> Завантаження маршрутів...
                 </div>
@@ -949,7 +949,6 @@
         <div class="pc-sidebar-section">
             <div style="padding:14px;display:flex;flex-direction:column;gap:8px;">
                 <button onclick="openAddModal()" style="width:100%;padding:12px;background:var(--primary);color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">➕ Новий пасажир</button>
-                <button onclick="runOptimization()" style="width:100%;padding:12px;background:var(--purple);color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">⚡ Оптимізація маршруту</button>
             </div>
         </div>
     </aside>
@@ -5092,6 +5091,26 @@ async function startOptimization() {
             }
         }
 
+        // 5b. Зберегти оптимізований порядок в масиві passengers
+        // Щоб ліди відображались у порядку оптимізації
+        const optimizedPaxIds = orderedPassengers.map(p => p.paxId);
+        const optimizedSet = new Set(optimizedPaxIds);
+        const reorderedOptimized = [];
+        const notOptimized = [];
+        for (const p of passengers) {
+            if (optimizedSet.has(p['PAX_ID'])) {
+                // буде додано в порядку оптимізації нижче
+            } else {
+                notOptimized.push(p);
+            }
+        }
+        // Додаємо оптимізованих в правильному порядку на початок
+        for (const paxId of optimizedPaxIds) {
+            const found = passengers.find(p => p['PAX_ID'] === paxId);
+            if (found) reorderedOptimized.push(found);
+        }
+        passengers = [...reorderedOptimized, ...notOptimized];
+
         // 6. Show result
         document.getElementById('optimizeLoadingBody').style.display = 'none';
         showOptimizationResult({
@@ -5107,6 +5126,9 @@ async function startOptimization() {
             totalDist: cumulativeDist,
             totalTime: cumulativeTime
         });
+
+        // Перерендерити список карток у оптимізованому порядку
+        render();
 
     } catch(err) {
         console.error('Optimize error:', err);
