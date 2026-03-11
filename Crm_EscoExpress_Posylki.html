@@ -329,6 +329,21 @@
         .direction-option.active-eu { background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #047857; font-weight: 700; }
         .dir-count-popup { margin-left: auto; background: rgba(0,0,0,0.08); padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
 
+        /* COLUMN CONFIGURATOR */
+        .col-cfg-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 700; display: none; align-items: center; justify-content: center; }
+        .col-cfg-overlay.show { display: flex; }
+        .col-cfg-modal { background: white; border-radius: 16px; padding: 20px; max-width: 380px; width: 90%; max-height: 70vh; overflow-y: auto; }
+        .col-cfg-title { font-size: 16px; font-weight: 800; color: var(--primary); margin-bottom: 4px; }
+        .col-cfg-subtitle { font-size: 11px; color: var(--text-secondary); margin-bottom: 12px; }
+        .col-cfg-list { display: flex; flex-direction: column; gap: 4px; max-height: 45vh; overflow-y: auto; }
+        .col-cfg-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg-main); border-radius: 8px; cursor: pointer; transition: all 0.2s; border: 2px solid transparent; }
+        .col-cfg-item:hover { background: #e8ecf0; }
+        .col-cfg-item.checked { background: #dbeafe; border-color: #3b82f6; }
+        .col-cfg-check { width: 22px; height: 22px; border-radius: 6px; background: white; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: white; flex-shrink: 0; }
+        .col-cfg-item.checked .col-cfg-check { background: #3b82f6; border-color: #3b82f6; }
+        .col-cfg-name { font-size: 12px; font-weight: 600; }
+        .col-cfg-footer { display: flex; gap: 8px; margin-top: 14px; }
+
         /* BULK TOOLBAR */
         .bulk-toolbar { position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 10px 16px; border-radius: 12px; z-index: 90; display: none; align-items: center; gap: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); font-size: 12px; font-weight: 600; max-width: 95vw; flex-direction: row; }
         .bulk-toolbar.show { display: flex; }
@@ -591,14 +606,25 @@
 
 <!-- BOTTOM NAV -->
 <nav class="bottom-nav">
-    <button class="nav-item active" id="navParcels"><span>&#128230;</span>Посилки</button>
-    <button class="nav-item" id="navDirection" onclick="toggleDirectionPopup()">
-        <span>&#129517;</span>
-        <span id="navDirectionLabel">&#127482;&#127462;&#8594;&#127466;&#127482;</span>
-    </button>
-    <button class="nav-item" onclick="silentSync()"><span>&#128260;</span>Оновити</button>
-    <button class="nav-item" onclick="openAddForm()"><span>&#10133;</span>Додати</button>
+    <button class="nav-item active" id="navParcels" onclick="showAllParcels()"><span>📦</span>Посилки</button>
+    <button class="nav-item" id="navPax" onclick="window.open('https://script.google.com/macros/s/AKfycbwQBMlsTUhUpoKGCiVXqVPNF9_KZ4N-DFHh7RVGmWMF2UEALNFuJ5Cj04xyFMBuEr6e/exec','_blank')"><span>👥</span>Пасажири</button>
+    <button class="nav-item" onclick="silentSync()"><span>🔄</span>Синхр.</button>
+    <button class="nav-item" onclick="openColumnConfigurator()"><span>⚙️</span>Колонки</button>
+    <button class="nav-item" onclick="openAddForm()"><span>➕</span>Додати</button>
 </nav>
+
+<!-- COLUMN CONFIGURATOR MODAL -->
+<div class="col-cfg-overlay" id="colCfgOverlay" onclick="if(event.target===this)closeColumnConfigurator()">
+    <div class="col-cfg-modal" onclick="event.stopPropagation()">
+        <div class="col-cfg-title">⚙️ Колонки картки</div>
+        <div class="col-cfg-subtitle">Оберіть які поля показувати на картці посилки</div>
+        <div class="col-cfg-list" id="colCfgList"></div>
+        <div class="col-cfg-footer">
+            <button class="bs-btn cancel" onclick="resetColCfg()">🔄 Скинути</button>
+            <button class="bs-btn primary" onclick="saveColCfg()">💾 Зберегти</button>
+        </div>
+    </div>
+</div>
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
@@ -958,6 +984,8 @@ function renderCards() {
     }
     empty.style.display = 'none';
 
+    const visCols = getVisibleCardColumns();
+
     container.innerHTML = filteredData.map(p => {
         const pkgId = p['PKG_ID'] || '';
         const sender = p['Піб відправника'] || '';
@@ -978,6 +1006,8 @@ function renderCards() {
         const date = p['Дата створення'] || '';
         const tag = p['Тег'] || '';
 
+        const v = key => visCols.includes(key);
+
         const statusClass = status === 'Новий' ? 'status-new' : status === 'В роботі' ? 'status-work' : status === 'Підтверджено' ? 'status-confirmed' : status === 'Відмова' ? 'status-refused' : '';
         const dirBadge = isUE ? 'dir-badge-ua-eu' : 'dir-badge-eu-ua';
         const dirText = isUE ? 'УК&#8594;ЄВ' : 'ЄВ&#8594;УК';
@@ -994,21 +1024,21 @@ function renderCards() {
             '<div class="card-body" onclick="toggleCard(\'' + pkgId + '\')">' +
             '<div class="card-top-row">' +
             '<span class="card-direction ' + dirBadge + '">' + dirText + '</span>' +
-            '<span class="card-phone">' + escHtml(phone) + '</span>' +
-            (weight ? '<span class="card-weight">' + weight + ' кг</span>' : '') +
+            (v('phone') ? '<span class="card-phone">' + escHtml(phone) + '</span>' : '') +
+            (v('weight') && weight ? '<span class="card-weight">' + weight + ' кг</span>' : '') +
             '<div class="card-price-wrap">' +
-            '<span class="card-price">' + sum + ' ' + currency + '</span>' +
-            (deposit > 0 ? '<span class="card-deposit has-deposit">завд: ' + deposit + '</span>' : '') +
-            (debt > 0 ? '<span class="card-deposit" style="color:#ef4444;font-weight:700;">борг: ' + debt + '</span>' : '') +
+            (v('sum') ? '<span class="card-price">' + sum + ' ' + currency + '</span>' : '') +
+            (v('deposit') && deposit > 0 ? '<span class="card-deposit has-deposit">завд: ' + deposit + '</span>' : '') +
+            (v('debt') && debt > 0 ? '<span class="card-deposit" style="color:#ef4444;font-weight:700;">борг: ' + debt + '</span>' : '') +
             '</div></div>' +
             '<div class="card-row2-wrap">' +
-            '<div class="card-info-row"><span class="card-id">' + pkgId + '</span><span class="card-name">&#128100; ' + escHtml(sender) + ' &#8594; ' + escHtml(receiver) + '</span></div>' +
-            '<div class="card-route"><span class="card-route-icon">&#128205;</span> ' + escHtml(addressFrom) + ' &#8594; ' + escHtml(addressTo) + '</div>' +
+            '<div class="card-info-row">' + (v('pkgId') ? '<span class="card-id">' + pkgId + '</span>' : '') + (v('sender') || v('receiver') ? '<span class="card-name">&#128100; ' + (v('sender') ? escHtml(sender) : '') + (v('sender') && v('receiver') ? ' &#8594; ' : '') + (v('receiver') ? escHtml(receiver) : '') + '</span>' : '') + '</div>' +
+            (v('address') ? '<div class="card-route"><span class="card-route-icon">&#128205;</span> ' + escHtml(addressFrom) + ' &#8594; ' + escHtml(addressTo) + '</div>' : '') +
             '<div class="card-meta-row">' +
-            (date ? '<span class="card-meta-tag">&#128197; ' + date + '</span>' : '') +
-            (pkgStatus ? '<span class="card-meta-tag">' + escHtml(pkgStatus) + '</span>' : '') +
-            (ttn ? '<span class="card-meta-tag">TTH: ' + escHtml(ttn) + '</span>' : '') +
-            (tag ? '<span class="card-meta-tag" style="background:#f3e8ff;color:#7c3aed;">' + escHtml(tag) + '</span>' : '') +
+            (v('date') && date ? '<span class="card-meta-tag">&#128197; ' + date + '</span>' : '') +
+            (v('pkgStatus') && pkgStatus ? '<span class="card-meta-tag">' + escHtml(pkgStatus) + '</span>' : '') +
+            (v('ttn') && ttn ? '<span class="card-meta-tag">TTH: ' + escHtml(ttn) + '</span>' : '') +
+            (v('tag') && tag ? '<span class="card-meta-tag" style="background:#f3e8ff;color:#7c3aed;">' + escHtml(tag) + '</span>' : '') +
             '</div></div></div>' +
             '<div class="card-right-section"><button class="card-actions-toggle ' + (isOpen ? 'open' : '') + '" onclick="toggleCard(\'' + pkgId + '\')">&#9660;</button></div>' +
             '</div></div>' +
@@ -1722,6 +1752,83 @@ document.addEventListener('change', function(e) {
         updateBulkToolbar();
     }
 });
+
+// ── SHOW ALL PARCELS (reset filters) ──
+function showAllParcels() {
+    currentFilter = 'all';
+    currentPayFilter = 'all';
+    searchQuery = '';
+    document.getElementById('searchInput').value = '';
+    applyFilters();
+}
+
+// ── COLUMN CONFIGURATOR ──
+const ALL_CARD_COLUMNS = [
+    { key: 'phone', label: '📞 Телефон' },
+    { key: 'weight', label: '⚖️ Вага (кг)' },
+    { key: 'sum', label: '💰 Сума' },
+    { key: 'deposit', label: '💵 Завдаток' },
+    { key: 'debt', label: '🔴 Борг' },
+    { key: 'sender', label: '👤 Відправник' },
+    { key: 'receiver', label: '👤 Отримувач' },
+    { key: 'address', label: '📍 Адреси' },
+    { key: 'date', label: '📅 Дата' },
+    { key: 'pkgStatus', label: '📦 Статус посилки' },
+    { key: 'ttn', label: '🔢 Номер ТТН' },
+    { key: 'tag', label: '🏷️ Тег' },
+    { key: 'pkgId', label: '🆔 PKG_ID' }
+];
+const DEFAULT_CARD_COLUMNS = ['phone', 'weight', 'sum', 'deposit', 'debt', 'sender', 'receiver', 'address', 'date', 'pkgStatus', 'ttn', 'tag', 'pkgId'];
+let colCfgTemp = [];
+
+function getVisibleCardColumns() {
+    try {
+        const saved = localStorage.getItem('esco_posylki_card_cols');
+        if (saved) return JSON.parse(saved);
+    } catch(e) {}
+    return [...DEFAULT_CARD_COLUMNS];
+}
+
+function openColumnConfigurator() {
+    colCfgTemp = getVisibleCardColumns();
+    renderColCfgList();
+    document.getElementById('colCfgOverlay').classList.add('show');
+}
+
+function closeColumnConfigurator() {
+    document.getElementById('colCfgOverlay').classList.remove('show');
+}
+
+function renderColCfgList() {
+    const list = document.getElementById('colCfgList');
+    list.innerHTML = ALL_CARD_COLUMNS.map(col => {
+        const checked = colCfgTemp.includes(col.key);
+        return '<div class="col-cfg-item ' + (checked ? 'checked' : '') + '" onclick="toggleColCfgItem(\'' + col.key + '\')">' +
+            '<div class="col-cfg-check">' + (checked ? '✓' : '') + '</div>' +
+            '<div class="col-cfg-name">' + col.label + '</div>' +
+            '</div>';
+    }).join('');
+}
+
+function toggleColCfgItem(key) {
+    const idx = colCfgTemp.indexOf(key);
+    if (idx >= 0) colCfgTemp.splice(idx, 1);
+    else colCfgTemp.push(key);
+    renderColCfgList();
+}
+
+function saveColCfg() {
+    if (colCfgTemp.length === 0) { alert('Оберіть хоча б одне поле'); return; }
+    localStorage.setItem('esco_posylki_card_cols', JSON.stringify(colCfgTemp));
+    closeColumnConfigurator();
+    renderCards();
+    showToast('Колонки збережено ✓');
+}
+
+function resetColCfg() {
+    colCfgTemp = [...DEFAULT_CARD_COLUMNS];
+    renderColCfgList();
+}
 </script>
 </body>
 </html>
