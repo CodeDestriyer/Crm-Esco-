@@ -1111,17 +1111,27 @@
             <div class="form-group"><label>Адреса прибуття</label><input type="text" id="fTo"></div>
             <div class="form-row">
                 <div class="form-group"><label>Ціна квитка</label><input type="text" id="fPrice"></div>
-                <div class="form-group"><label>Завдаток</label><input type="text" id="fDeposit"></div>
-            </div>
-            <div class="form-row">
-                <div class="form-group"><label>Валюта</label>
+                <div class="form-group"><label>Валюта квитка</label>
                     <select id="fCurrency"><option value="UAH">UAH</option><option value="EUR">EUR</option><option value="CHF">CHF</option><option value="USD">USD</option><option value="PLN">PLN</option><option value="CZK">CZK</option></select>
                 </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Завдаток</label><input type="text" id="fDeposit"></div>
+                <div class="form-group"><label>Валюта завдатку</label>
+                    <select id="fCurrencyDeposit"><option value="UAH">UAH</option><option value="EUR">EUR</option><option value="CHF">CHF</option><option value="USD">USD</option><option value="PLN">PLN</option><option value="CZK">CZK</option></select>
+                </div>
+            </div>
+            <div class="form-row">
                 <div class="form-group"><label>Таймінг</label><input type="text" id="fTiming" placeholder="14:00"></div>
             </div>
             <div class="form-row">
                 <div class="form-group"><label>Вага багажу (кг)</label><input type="text" id="fWeight"></div>
                 <div class="form-group"><label>Ціна багажу</label><input type="text" id="fWeightPrice"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Валюта багажу</label>
+                    <select id="fCurrencyWeight"><option value="UAH">UAH</option><option value="EUR">EUR</option><option value="CHF">CHF</option><option value="USD">USD</option><option value="PLN">PLN</option><option value="CZK">CZK</option></select>
+                </div>
             </div>
             <div class="form-group"><label>Примітка</label><input type="text" id="fNote"></div>
         </div>
@@ -2062,9 +2072,12 @@ function openRouteEditModal(rteId, sheetName) {
     }
     document.getElementById('fDate').value = dateVal;
 
-    const currVal = r['Валюта'] || 'EUR';
     const currEl = document.getElementById('fCurrency');
-    if (currEl) currEl.value = currVal;
+    if (currEl) currEl.value = r['Валюта'] || 'EUR';
+    const currDepEl = document.getElementById('fCurrencyDeposit');
+    if (currDepEl) currDepEl.value = r['Валюта завдатку'] || 'EUR';
+    const currWtEl = document.getElementById('fCurrencyWeight');
+    if (currWtEl) currWtEl.value = r['Валюта багажу'] || 'EUR';
 
     const saveBtn = document.getElementById('paxSaveBtn');
     if (saveBtn) {
@@ -2751,9 +2764,12 @@ function openEditPax(id) {
     document.getElementById('fDate').value = dateVal;
 
     // Currency
-    const currVal = p['Валюта квитка'] || 'UAH';
     const currEl = document.getElementById('fCurrency');
-    if (currEl) currEl.value = currVal;
+    if (currEl) currEl.value = p['Валюта квитка'] || 'UAH';
+    const currDepEl = document.getElementById('fCurrencyDeposit');
+    if (currDepEl) currDepEl.value = p['Валюта завдатку'] || 'UAH';
+    const currWtEl = document.getElementById('fCurrencyWeight');
+    if (currWtEl) currWtEl.value = p['Валюта багажу'] || 'UAH';
 
     const saveBtn = document.getElementById('paxSaveBtn');
     if (saveBtn) saveBtn.textContent = '💾 Оновити';
@@ -2860,6 +2876,9 @@ function openAddModal() {
     document.getElementById('fSeats').value = '1';
     document.getElementById('fDate').value = '';
     document.getElementById('fDirection').value = currentDir === 'eu-ua' ? 'eu-ua' : 'ua-eu';
+    document.getElementById('fCurrency').value = 'UAH';
+    document.getElementById('fCurrencyDeposit').value = 'UAH';
+    document.getElementById('fCurrencyWeight').value = 'UAH';
     // Скидаємо SMS парсер
     document.getElementById('smsInput').value = '';
     document.getElementById('smsParseResult').style.display = 'none';
@@ -3086,8 +3105,10 @@ async function savePassenger() {
         price: document.getElementById('fPrice').value.trim(),
         currency: document.getElementById('fCurrency').value,
         deposit: document.getElementById('fDeposit').value.trim(),
+        currencyDeposit: document.getElementById('fCurrencyDeposit').value,
         weight: document.getElementById('fWeight').value.trim(),
         weightPrice: document.getElementById('fWeightPrice').value.trim(),
+        currencyWeight: document.getElementById('fCurrencyWeight').value,
         note: document.getElementById('fNote').value.trim()
     };
 
@@ -3112,8 +3133,10 @@ async function savePassenger() {
                 p['Ціна квитка'] = formData.price;
                 p['Валюта квитка'] = formData.currency;
                 p['Завдаток'] = formData.deposit;
+                p['Валюта завдатку'] = formData.currencyDeposit;
                 p['Вага багажу'] = formData.weight;
                 p['Ціна багажу'] = formData.weightPrice;
+                p['Валюта багажу'] = formData.currencyWeight;
                 p['Примітка'] = formData.note;
             }
             hideLoader();
