@@ -71,6 +71,10 @@
         .pc-sidebar-item.active .item-count { background: rgba(255,255,255,0.25); color: white; }
         .pc-sidebar-add { display: flex; align-items: center; justify-content: center; padding: 11px; border: 2px dashed var(--border); border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 700; letter-spacing: 0.3px; color: var(--info); margin-top: 8px; background: white; transition: all 0.2s ease; }
         .pc-sidebar-add:hover { border-color: var(--info); background: #eff6ff; }
+        .pc-sidebar-item.pc-dir-ue.active { background: linear-gradient(135deg, #dbeafe, #bfdbfe); color: #1d4ed8; border-color: #2563eb; }
+        .pc-sidebar-item.pc-dir-ue.active .item-count { background: rgba(37,99,235,0.15); color: #1d4ed8; }
+        .pc-sidebar-item.pc-dir-eu.active { background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #047857; border-color: #059669; }
+        .pc-sidebar-item.pc-dir-eu.active .item-count { background: rgba(5,150,105,0.15); color: #047857; }
 
         /* SIDE MENU (Mobile) */
         .side-menu-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 200; }
@@ -396,6 +400,16 @@
         <button class="side-menu-close" onclick="closeSideMenu()">&#10005;</button>
     </div>
     <div class="side-menu-content">
+        <div class="side-menu-section-title">Напрямок</div>
+        <div class="side-menu-item active" id="mobDirUE" onclick="setDirection('ue'); closeSideMenu();">
+            <span class="side-menu-item-left">&#127482;&#127462;&#8594;&#127466;&#127482; Україна-Європа</span>
+            <span class="side-menu-item-count" id="mobCountUE">0</span>
+        </div>
+        <div class="side-menu-item" id="mobDirEU" onclick="setDirection('eu'); closeSideMenu();">
+            <span class="side-menu-item-left">&#127466;&#127482;&#8594;&#127482;&#127462; Європа-Україна</span>
+            <span class="side-menu-item-count" id="mobCountEU">0</span>
+        </div>
+        <div class="side-menu-divider"></div>
         <div class="side-menu-section-title">Посилки</div>
         <div class="side-menu-item active" id="mobAll" onclick="setFilter('all'); closeSideMenu();">
             <span class="side-menu-item-left">&#128230; Всі посилки</span>
@@ -442,6 +456,23 @@
 <div class="main-layout">
     <!-- PC SIDEBAR -->
     <div class="pc-sidebar" id="pcSidebar">
+        <!-- DIRECTION SECTION -->
+        <div class="pc-sidebar-section">
+            <div class="pc-sidebar-header" onclick="togglePcSection('direction')">
+                <span class="pc-sidebar-title">&#129517; НАПРЯМОК</span>
+                <span class="pc-sidebar-toggle" id="pcToggleDirection">&#9660;</span>
+            </div>
+            <div class="pc-sidebar-content" id="pcSectionDirection">
+                <div class="pc-sidebar-item pc-dir-ue active" id="sideDirUE" onclick="setDirection('ue')">
+                    <span><span class="item-icon">&#127482;&#127462;&#8594;&#127466;&#127482;</span><span class="item-text">Україна-Європа</span></span>
+                    <span class="item-count" id="pcCountUE">0</span>
+                </div>
+                <div class="pc-sidebar-item pc-dir-eu" id="sideDirEU" onclick="setDirection('eu')">
+                    <span><span class="item-icon">&#127466;&#127482;&#8594;&#127482;&#127462;</span><span class="item-text">Європа-Україна</span></span>
+                    <span class="item-count" id="pcCountEU">0</span>
+                </div>
+            </div>
+        </div>
         <div class="pc-sidebar-section">
             <div class="pc-sidebar-header collapsed" onclick="togglePcSection('leads')">
                 <span class="pc-sidebar-title">&#128230; ПОСИЛКИ</span>
@@ -780,12 +811,22 @@ document.addEventListener('click', function(e) {
 function setDirection(dir) {
     currentDirection = dir;
     // Update bottom nav label
-    const navLabel = document.getElementById('navDirectionLabel');
+    var navLabel = document.getElementById('navDirectionLabel');
     if (navLabel) navLabel.innerHTML = dir === 'ue' ? '\u{1F1FA}\u{1F1E6}\u2192\u{1F1EA}\u{1F1FA}' : '\u{1F1EA}\u{1F1FA}\u2192\u{1F1FA}\u{1F1E6}';
     // Update popup active states
     document.querySelectorAll('.direction-option').forEach(function(el) {
         el.className = 'direction-option' + (el.dataset.dir === dir ? (dir === 'ue' ? ' active-ue' : ' active-eu') : '');
     });
+    // Update PC sidebar direction
+    var sUE = document.getElementById('sideDirUE');
+    var sEU = document.getElementById('sideDirEU');
+    if (sUE) sUE.className = 'pc-sidebar-item pc-dir-ue' + (dir === 'ue' ? ' active' : '');
+    if (sEU) sEU.className = 'pc-sidebar-item pc-dir-eu' + (dir === 'eu' ? ' active' : '');
+    // Update mobile side menu direction
+    var mUE = document.getElementById('mobDirUE');
+    var mEU = document.getElementById('mobDirEU');
+    if (mUE) { mUE.classList.toggle('active', dir === 'ue'); }
+    if (mEU) { mEU.classList.toggle('active', dir === 'eu'); }
     updateFormForDirection();
     updateSidebar();
     applyFilters();
@@ -887,11 +928,19 @@ function updateSidebar() {
     document.getElementById('mobCountPartial').textContent = payCounts['Частково'];
     document.getElementById('mobCountPaid').textContent = payCounts['Оплачено'];
 
-    // Direction popup counts
+    // Direction counts (popup + PC sidebar + mobile menu)
     var dUE = document.getElementById('countDirUE');
     var dEU = document.getElementById('countDirEU');
     if (dUE) dUE.textContent = ueData.length;
     if (dEU) dEU.textContent = euData.length;
+    var pcUE = document.getElementById('pcCountUE');
+    var pcEU = document.getElementById('pcCountEU');
+    if (pcUE) pcUE.textContent = ueData.length;
+    if (pcEU) pcEU.textContent = euData.length;
+    var mobUE = document.getElementById('mobCountUE');
+    var mobEU = document.getElementById('mobCountEU');
+    if (mobUE) mobUE.textContent = ueData.length;
+    if (mobEU) mobEU.textContent = euData.length;
 }
 
 // ── RENDER CARDS ──
