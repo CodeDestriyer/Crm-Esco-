@@ -316,6 +316,15 @@
         .nav-item.active { color: var(--accent); }
         .nav-item span:first-child { font-size: 18px; }
 
+        /* DIRECTION POPUP */
+        .direction-popup { position: fixed; bottom: 56px; left: 50%; transform: translateX(-50%); background: white; border-radius: 12px; box-shadow: 0 -4px 20px rgba(0,0,0,0.15); padding: 8px; display: none; z-index: 150; min-width: 220px; }
+        .direction-popup.show { display: block; }
+        .direction-option { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--text-primary); }
+        .direction-option:hover { background: var(--bg-main); }
+        .direction-option.active-ue { background: linear-gradient(135deg, #dbeafe, #bfdbfe); color: #1d4ed8; font-weight: 700; }
+        .direction-option.active-eu { background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #047857; font-weight: 700; }
+        .dir-count-popup { margin-left: auto; background: rgba(0,0,0,0.08); padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+
         /* BULK TOOLBAR */
         .bulk-toolbar { position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 10px 16px; border-radius: 12px; z-index: 90; display: none; align-items: center; gap: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); font-size: 12px; font-weight: 600; max-width: 95vw; flex-direction: row; }
         .bulk-toolbar.show { display: flex; }
@@ -492,15 +501,9 @@
 
     <!-- MAIN CONTENT -->
     <div class="main-content-area" id="mainContent">
-        <!-- Direction tabs -->
-        <div class="dir-tabs">
-            <div class="dir-tab active-ue" id="tabUE" onclick="setDirection('ue')">
-                <span class="dir-count" id="countUE">0</span> УК &#8594; ЄВ
-            </div>
-            <div class="dir-tab" id="tabEU" onclick="setDirection('eu')">
-                <span class="dir-count" id="countEU">0</span> ЄВ &#8594; УК
-            </div>
-        </div>
+        <!-- Direction counts (hidden, used by JS) -->
+        <span id="countUE" style="display:none;">0</span>
+        <span id="countEU" style="display:none;">0</span>
 
         <!-- Filter bar -->
         <div class="filter-bar">
@@ -543,10 +546,24 @@
     <button class="bulk-toolbar-btn cancel" onclick="clearSelection()">&#10005; Скасувати</button>
 </div>
 
+<!-- DIRECTION POPUP -->
+<div class="direction-popup" id="directionPopup">
+    <div class="direction-option active-ue" data-dir="ue" onclick="setDirectionFromPopup('ue')">
+        <span>&#127482;&#127462;&#8594;&#127466;&#127482;</span> Україна-Європа <span class="dir-count-popup" id="countDirUE">0</span>
+    </div>
+    <div class="direction-option" data-dir="eu" onclick="setDirectionFromPopup('eu')">
+        <span>&#127466;&#127482;&#8594;&#127482;&#127462;</span> Європа-Україна <span class="dir-count-popup" id="countDirEU">0</span>
+    </div>
+</div>
+
 <!-- BOTTOM NAV -->
 <nav class="bottom-nav">
     <button class="nav-item active" id="navParcels"><span>&#128230;</span>Посилки</button>
-    <button class="nav-item" onclick="silentSync()"><span>&#128260;</span>Синхр.</button>
+    <button class="nav-item" id="navDirection" onclick="toggleDirectionPopup()">
+        <span>&#129517;</span>
+        <span id="navDirectionLabel">&#127482;&#127462;&#8594;&#127466;&#127482;</span>
+    </button>
+    <button class="nav-item" onclick="silentSync()"><span>&#128260;</span>Оновити</button>
     <button class="nav-item" onclick="openAddForm()"><span>&#10133;</span>Додати</button>
 </nav>
 
@@ -740,12 +757,37 @@ document.addEventListener('DOMContentLoaded', async function() {
     hideLoader();
 });
 
+// ── DIRECTION POPUP ──
+function toggleDirectionPopup() {
+    document.getElementById('directionPopup').classList.toggle('show');
+}
+
+function setDirectionFromPopup(dir) {
+    setDirection(dir);
+    document.getElementById('directionPopup').classList.remove('show');
+}
+
+// Close popup on outside click
+document.addEventListener('click', function(e) {
+    const popup = document.getElementById('directionPopup');
+    const btn = document.getElementById('navDirection');
+    if (popup && !popup.contains(e.target) && btn && !btn.contains(e.target)) {
+        popup.classList.remove('show');
+    }
+});
+
 // ── FILTERS ──
 function setDirection(dir) {
     currentDirection = dir;
-    document.getElementById('tabUE').className = dir === 'ue' ? 'dir-tab active-ue' : 'dir-tab';
-    document.getElementById('tabEU').className = dir === 'eu' ? 'dir-tab active-eu' : 'dir-tab';
+    // Update bottom nav label
+    const navLabel = document.getElementById('navDirectionLabel');
+    if (navLabel) navLabel.innerHTML = dir === 'ue' ? '\u{1F1FA}\u{1F1E6}\u2192\u{1F1EA}\u{1F1FA}' : '\u{1F1EA}\u{1F1FA}\u2192\u{1F1FA}\u{1F1E6}';
+    // Update popup active states
+    document.querySelectorAll('.direction-option').forEach(function(el) {
+        el.className = 'direction-option' + (el.dataset.dir === dir ? (dir === 'ue' ? ' active-ue' : ' active-eu') : '');
+    });
     updateFormForDirection();
+    updateSidebar();
     applyFilters();
 }
 
@@ -844,6 +886,12 @@ function updateSidebar() {
     document.getElementById('mobCountUnpaid').textContent = payCounts['Не оплачено'];
     document.getElementById('mobCountPartial').textContent = payCounts['Частково'];
     document.getElementById('mobCountPaid').textContent = payCounts['Оплачено'];
+
+    // Direction popup counts
+    var dUE = document.getElementById('countDirUE');
+    var dEU = document.getElementById('countDirEU');
+    if (dUE) dUE.textContent = ueData.length;
+    if (dEU) dEU.textContent = euData.length;
 }
 
 // ── RENDER CARDS ──
