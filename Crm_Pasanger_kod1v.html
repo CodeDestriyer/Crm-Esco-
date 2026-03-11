@@ -158,7 +158,7 @@
         .lead-card.status-refused { border-left-color: var(--danger); background: #fef2f2; }
         .lead-card.selected { background: #f0f7ff; }
 
-        .card-header { display: flex; flex-direction: column; padding: 0; cursor: pointer; border-radius: 8px 8px 0 0; overflow: visible; }
+        .card-header { display: flex; flex-direction: column; padding: 0; cursor: default; border-radius: 8px 8px 0 0; overflow: visible; -webkit-user-select: text; user-select: text; }
         .card-header-top { display: flex; align-items: stretch; }
         .card-checkbox-wrap { display: flex; align-items: center; justify-content: center; padding: 10px 8px; background: var(--bg-main); border-right: 1px solid var(--border); flex-shrink: 0; }
         .card-checkbox { width: 18px; height: 18px; cursor: pointer; }
@@ -2502,7 +2502,7 @@ function renderCard(p) {
     }
 
     return `<div class="lead-card ${statusClass} ${selectedIds.has(id)?'selected':''}">
-        <div class="card-header" onclick="toggleDetails('${id}')">
+        <div class="card-header" onclick="smartToggleDetails(event, '${id}')">
             <div class="card-header-top">
                 <div class="card-checkbox-wrap" onclick="event.stopPropagation()">
                     <input class="card-checkbox" type="checkbox" ${selectedIds.has(id)?'checked':''} onchange="toggleSelect('${id}',this.checked)">
@@ -2648,6 +2648,20 @@ function switchDetailTab(paxId, sectionKey, tabEl) {
 
 function openMap(address) {
     window.open('https://www.google.com/maps/search/' + encodeURIComponent(address), '_blank');
+}
+
+// Розумний клік — не розгортати якщо юзер виділив текст або клікнув на інтерактивний елемент
+function smartToggleDetails(e, id) {
+    // Якщо є виділений текст — не розгортати (юзер копіює)
+    var sel = window.getSelection();
+    if (sel && sel.toString().trim().length > 0) return;
+
+    // Якщо клік був на інтерактивному елементі — не розгортати
+    var tag = e.target.tagName;
+    if (tag === 'BUTTON' || tag === 'INPUT' || tag === 'A' || tag === 'SELECT') return;
+    if (e.target.closest && (e.target.closest('button') || e.target.closest('a') || e.target.closest('.card-trip-strip') || e.target.closest('.card-checkbox-wrap') || e.target.closest('.card-actions-toggle'))) return;
+
+    toggleDetails(id);
 }
 
 function toggleDetails(id) {
