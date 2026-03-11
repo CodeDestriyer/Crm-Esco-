@@ -303,18 +303,55 @@
         .empty-state-text { font-size: 12px; }
 
         /* FAB */
-        .fab { position: fixed; bottom: 20px; right: 20px; width: 56px; height: 56px; background: var(--primary); color: white; border: none; border-radius: 50%; font-size: 24px; cursor: pointer; box-shadow: 0 4px 20px rgba(26,58,94,0.4); z-index: 50; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        .fab { position: fixed; bottom: 70px; right: 20px; width: 56px; height: 56px; background: var(--primary); color: white; border: none; border-radius: 50%; font-size: 24px; cursor: pointer; box-shadow: 0 4px 20px rgba(26,58,94,0.4); z-index: 50; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
         .fab:hover { transform: scale(1.1); background: var(--primary-dark); }
 
+        /* SIDEBAR COLLAPSE BUTTON */
+        .pc-sidebar-collapse-btn { display: none; position: fixed; top: 60px; left: 300px; z-index: 150; width: 24px; height: 48px; background: white; border: 1px solid var(--border); border-left: none; border-radius: 0 8px 8px 0; cursor: pointer; align-items: center; justify-content: center; font-size: 12px; color: var(--text-secondary); box-shadow: 2px 0 8px rgba(0,0,0,0.08); transition: left 0.3s ease, background 0.2s; }
+        .pc-sidebar-collapse-btn:hover { background: var(--bg-main); color: var(--primary); }
+
+        /* BOTTOM NAV */
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid var(--border); padding: 6px 10px; z-index: 100; display: flex; justify-content: space-around; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 5px 12px; border: none; background: none; font-family: inherit; font-size: 9px; color: var(--text-secondary); cursor: pointer; }
+        .nav-item.active { color: var(--accent); }
+        .nav-item span:first-child { font-size: 18px; }
+
+        /* BULK TOOLBAR */
+        .bulk-toolbar { position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 10px 16px; border-radius: 12px; z-index: 90; display: none; align-items: center; gap: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); font-size: 12px; font-weight: 600; max-width: 95vw; flex-direction: row; }
+        .bulk-toolbar.show { display: flex; }
+        .bulk-toolbar-count { background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+        .bulk-toolbar-btn { padding: 8px 14px; border: none; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; transition: all 0.2s; }
+        .bulk-toolbar-btn.select-all { background: rgba(255,255,255,0.2); color: white; }
+        .bulk-toolbar-btn.select-all:hover { background: rgba(255,255,255,0.35); }
+        .bulk-toolbar-btn.route { background: #7c3aed; color: white; }
+        .bulk-toolbar-btn.route:hover { background: #6d28d9; }
+        .bulk-toolbar-btn.archive { background: #f3f4f6; color: #6b7280; }
+        .bulk-toolbar-btn.archive:hover { background: #e5e7eb; }
+        .bulk-toolbar-btn.cancel { background: rgba(255,255,255,0.15); color: white; }
+        .bulk-toolbar-btn.cancel:hover { background: rgba(255,255,255,0.25); }
+
+        /* SIDE MENU DIVIDER */
+        .side-menu-divider { height: 1px; background: rgba(255,255,255,0.1); margin: 8px 0; }
+        .side-menu-section-title { font-size: 9px; font-weight: 700; text-transform: uppercase; color: rgba(255,255,255,0.4); padding: 6px 12px 2px; letter-spacing: 1px; }
+
         /* RESPONSIVE */
+        @media (min-width: 901px) {
+            .pc-sidebar-collapse-btn { display: flex; }
+            .bulk-toolbar { position: fixed; left: 0; top: 52px; bottom: auto; transform: none; width: 300px; max-width: 300px; border-radius: 0; flex-direction: column; align-items: stretch; padding: 16px; gap: 10px; height: calc(100vh - 52px); box-shadow: 4px 0 20px rgba(0,0,0,0.15); z-index: 160; }
+            .bulk-toolbar-count { text-align: center; padding: 8px 12px; font-size: 13px; border-radius: 10px; }
+            .bulk-toolbar-btn { padding: 12px 16px; font-size: 13px; border-radius: 10px; text-align: center; }
+        }
         @media (min-width: 769px) {
             .burger-btn { display: none !important; }
             .pc-sidebar { display: block !important; }
+            .bottom-nav { display: none; }
+            .fab { bottom: 20px; }
         }
         @media (max-width: 768px) {
             .burger-btn { display: flex; }
             .pc-sidebar { display: none !important; }
-            .main-content-area { padding: 8px; }
+            .pc-sidebar-collapse-btn { display: none !important; }
+            .main-content-area { padding: 8px; padding-bottom: 60px; }
             .details-grid { grid-template-columns: 1fr 1fr; }
             .bs-row { grid-template-columns: 1fr; }
         }
@@ -337,7 +374,7 @@
         </div>
         <div class="header-right">
             <span class="sync-indicator" id="syncIndicator"></span>
-            <div class="user-avatar" id="userAvatar">M</div>
+            <div class="user-avatar" id="userAvatar" onclick="promptManagerName()" title="Натисніть щоб змінити ім'я">M</div>
         </div>
     </div>
 </div>
@@ -346,29 +383,48 @@
 <div class="side-menu-overlay" id="sideMenuOverlay" onclick="closeSideMenu()"></div>
 <div class="side-menu" id="sideMenu">
     <div class="side-menu-header">
-        <span class="side-menu-title">Посилки</span>
+        <span class="side-menu-title">&#128203; Меню</span>
         <button class="side-menu-close" onclick="closeSideMenu()">&#10005;</button>
     </div>
     <div class="side-menu-content">
-        <div class="side-menu-item active" onclick="setFilter('all'); closeSideMenu();">
-            <span class="side-menu-item-left">&#128230; Всі</span>
+        <div class="side-menu-section-title">Посилки</div>
+        <div class="side-menu-item active" id="mobAll" onclick="setFilter('all'); closeSideMenu();">
+            <span class="side-menu-item-left">&#128230; Всі посилки</span>
             <span class="side-menu-item-count" id="mobCountAll">0</span>
         </div>
-        <div class="side-menu-item" onclick="setFilter('Новий'); closeSideMenu();">
+        <div class="side-menu-item" id="mobNew" onclick="setFilter('Новий'); closeSideMenu();">
             <span class="side-menu-item-left">&#128313; Нові</span>
             <span class="side-menu-item-count" id="mobCountNew">0</span>
         </div>
-        <div class="side-menu-item" onclick="setFilter('В роботі'); closeSideMenu();">
+        <div class="side-menu-item" id="mobWork" onclick="setFilter('В роботі'); closeSideMenu();">
             <span class="side-menu-item-left">&#128736; В роботі</span>
             <span class="side-menu-item-count" id="mobCountWork">0</span>
         </div>
-        <div class="side-menu-item" onclick="setFilter('Підтверджено'); closeSideMenu();">
+        <div class="side-menu-item" id="mobConfirmed" onclick="setFilter('Підтверджено'); closeSideMenu();">
             <span class="side-menu-item-left">&#9989; Підтверджено</span>
             <span class="side-menu-item-count" id="mobCountConfirmed">0</span>
         </div>
-        <div class="side-menu-item" onclick="setFilter('Відмова'); closeSideMenu();">
+        <div class="side-menu-item" id="mobRefused" onclick="setFilter('Відмова'); closeSideMenu();">
             <span class="side-menu-item-left">&#10060; Відмова</span>
             <span class="side-menu-item-count" id="mobCountRefused">0</span>
+        </div>
+        <div class="side-menu-divider"></div>
+        <div class="side-menu-section-title">Фінанси</div>
+        <div class="side-menu-item" id="mobUnpaid" onclick="setPayFilter('Не оплачено'); closeSideMenu();">
+            <span class="side-menu-item-left">&#128308; Не оплачено</span>
+            <span class="side-menu-item-count" id="mobCountUnpaid">0</span>
+        </div>
+        <div class="side-menu-item" id="mobPartial" onclick="setPayFilter('Частково'); closeSideMenu();">
+            <span class="side-menu-item-left">&#128992; Частково</span>
+            <span class="side-menu-item-count" id="mobCountPartial">0</span>
+        </div>
+        <div class="side-menu-item" id="mobPaid" onclick="setPayFilter('Оплачено'); closeSideMenu();">
+            <span class="side-menu-item-left">&#128994; Оплачено</span>
+            <span class="side-menu-item-count" id="mobCountPaid">0</span>
+        </div>
+        <div class="side-menu-divider"></div>
+        <div class="side-menu-item" onclick="openAddForm(); closeSideMenu();">
+            <span class="side-menu-item-left">&#10133; Нова посилка</span>
         </div>
     </div>
 </div>
@@ -378,11 +434,11 @@
     <!-- PC SIDEBAR -->
     <div class="pc-sidebar" id="pcSidebar">
         <div class="pc-sidebar-section">
-            <div class="pc-sidebar-header" onclick="togglePcSection('leads')">
-                <span class="pc-sidebar-title">&#128230; Посилки</span>
-                <span class="pc-sidebar-toggle">&#9660;</span>
+            <div class="pc-sidebar-header collapsed" onclick="togglePcSection('leads')">
+                <span class="pc-sidebar-title">&#128230; ПОСИЛКИ</span>
+                <span class="pc-sidebar-toggle" id="pcToggleLeads">&#9660;</span>
             </div>
-            <div class="pc-sidebar-content" id="pcSectionLeads">
+            <div class="pc-sidebar-content collapsed" id="pcSectionLeads">
                 <div class="pc-sidebar-item active" id="sideAll" onclick="setFilter('all')">
                     <span><span class="item-icon">&#128230;</span><span class="item-text">Всі посилки</span></span>
                     <span class="item-count" id="pcCountAll">0</span>
@@ -407,11 +463,11 @@
             </div>
         </div>
         <div class="pc-sidebar-section">
-            <div class="pc-sidebar-header" onclick="togglePcSection('finance')">
-                <span class="pc-sidebar-title">&#128176; Фінанси</span>
-                <span class="pc-sidebar-toggle">&#9660;</span>
+            <div class="pc-sidebar-header collapsed" onclick="togglePcSection('finance')">
+                <span class="pc-sidebar-title">&#128176; ФІНАНСИ</span>
+                <span class="pc-sidebar-toggle" id="pcToggleFinance">&#9660;</span>
             </div>
-            <div class="pc-sidebar-content" id="pcSectionFinance">
+            <div class="pc-sidebar-content collapsed" id="pcSectionFinance">
                 <div class="pc-sidebar-item" id="sideUnpaid" onclick="setPayFilter('Не оплачено')">
                     <span><span class="item-icon">&#128308;</span><span class="item-text">Не оплачено</span></span>
                     <span class="item-count" id="pcCountUnpaid">0</span>
@@ -426,7 +482,13 @@
                 </div>
             </div>
         </div>
+        <div class="pc-sidebar-section">
+            <div style="padding:14px;display:flex;flex-direction:column;gap:8px;">
+                <button onclick="openAddForm()" style="width:100%;padding:12px;background:var(--primary);color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">&#10133; Нова посилка</button>
+            </div>
+        </div>
     </div>
+    <button class="pc-sidebar-collapse-btn" id="pcSidebarCollapseBtn" onclick="togglePcSidebar()" title="Згорнути/розгорнути меню">&#9664;</button>
 
     <!-- MAIN CONTENT -->
     <div class="main-content-area" id="mainContent">
@@ -470,7 +532,23 @@
 </div>
 
 <!-- FAB -->
-<button class="fab" onclick="openAddForm()">+</button>
+<button class="fab" id="fabBtn" onclick="openAddForm()">+</button>
+
+<!-- BULK TOOLBAR -->
+<div class="bulk-toolbar" id="bulkToolbar">
+    <span class="bulk-toolbar-count" id="bulkCount">0 обрано</span>
+    <button class="bulk-toolbar-btn select-all" onclick="toggleSelectAll()">&#9745; Вибрати всі</button>
+    <button class="bulk-toolbar-btn route" onclick="bulkRouteAssign()">&#128666; В маршрут</button>
+    <button class="bulk-toolbar-btn archive" onclick="bulkArchive()">&#128230; Архів</button>
+    <button class="bulk-toolbar-btn cancel" onclick="clearSelection()">&#10005; Скасувати</button>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+    <button class="nav-item active" id="navParcels"><span>&#128230;</span>Посилки</button>
+    <button class="nav-item" onclick="silentSync()"><span>&#128260;</span>Синхр.</button>
+    <button class="nav-item" onclick="openAddForm()"><span>&#10133;</span>Додати</button>
+</nav>
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
@@ -607,7 +685,7 @@
 // ================================================================
 
 // ── CONFIG ──
-const GAS_URL = ''; // ВСТАВТЕ URL ВАШОГО GAS WEB APP ТУТ
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbx_is-HxS4EeHOs4CtS1yfDGmQOiyJwBYLaIwhrg5d6cEWUAb8NU-hNIngV0mSm3fhXOg/exec';
 const UPLOAD_URL = 'https://botisystem.com/uploads/upload.php';
 
 // ── STATE ──
@@ -688,14 +766,15 @@ function setPayFilter(status) {
 
 function updateSidebarActive() {
     document.querySelectorAll('.pc-sidebar-item').forEach(el => el.classList.remove('active'));
-    if (currentFilter === 'all' && currentPayFilter === 'all') document.getElementById('sideAll')?.classList.add('active');
-    else if (currentFilter === 'Новий') document.getElementById('sideNew')?.classList.add('active');
-    else if (currentFilter === 'В роботі') document.getElementById('sideWork')?.classList.add('active');
-    else if (currentFilter === 'Підтверджено') document.getElementById('sideConfirmed')?.classList.add('active');
-    else if (currentFilter === 'Відмова') document.getElementById('sideRefused')?.classList.add('active');
-    else if (currentPayFilter === 'Не оплачено') document.getElementById('sideUnpaid')?.classList.add('active');
-    else if (currentPayFilter === 'Частково') document.getElementById('sidePartial')?.classList.add('active');
-    else if (currentPayFilter === 'Оплачено') document.getElementById('sidePaid')?.classList.add('active');
+    document.querySelectorAll('.side-menu-item').forEach(el => el.classList.remove('active'));
+    if (currentFilter === 'all' && currentPayFilter === 'all') { document.getElementById('sideAll')?.classList.add('active'); document.getElementById('mobAll')?.classList.add('active'); }
+    else if (currentFilter === 'Новий') { document.getElementById('sideNew')?.classList.add('active'); document.getElementById('mobNew')?.classList.add('active'); }
+    else if (currentFilter === 'В роботі') { document.getElementById('sideWork')?.classList.add('active'); document.getElementById('mobWork')?.classList.add('active'); }
+    else if (currentFilter === 'Підтверджено') { document.getElementById('sideConfirmed')?.classList.add('active'); document.getElementById('mobConfirmed')?.classList.add('active'); }
+    else if (currentFilter === 'Відмова') { document.getElementById('sideRefused')?.classList.add('active'); document.getElementById('mobRefused')?.classList.add('active'); }
+    else if (currentPayFilter === 'Не оплачено') { document.getElementById('sideUnpaid')?.classList.add('active'); document.getElementById('mobUnpaid')?.classList.add('active'); }
+    else if (currentPayFilter === 'Частково') { document.getElementById('sidePartial')?.classList.add('active'); document.getElementById('mobPartial')?.classList.add('active'); }
+    else if (currentPayFilter === 'Оплачено') { document.getElementById('sidePaid')?.classList.add('active'); document.getElementById('mobPaid')?.classList.add('active'); }
 }
 
 function onSearchInput() {
@@ -762,6 +841,9 @@ function updateSidebar() {
     document.getElementById('mobCountWork').textContent = counts['В роботі'];
     document.getElementById('mobCountConfirmed').textContent = counts['Підтверджено'];
     document.getElementById('mobCountRefused').textContent = counts['Відмова'];
+    document.getElementById('mobCountUnpaid').textContent = payCounts['Не оплачено'];
+    document.getElementById('mobCountPartial').textContent = payCounts['Частково'];
+    document.getElementById('mobCountPaid').textContent = payCounts['Оплачено'];
 }
 
 // ── RENDER CARDS ──
@@ -1435,6 +1517,112 @@ function escHtml(s) {
 function escAttr(s) {
     return String(s || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
+
+// ── SIDEBAR COLLAPSE ──
+function togglePcSidebar() {
+    const sidebar = document.getElementById('pcSidebar');
+    const btn = document.getElementById('pcSidebarCollapseBtn');
+    const isCollapsed = sidebar.classList.toggle('collapsed-sidebar');
+    btn.textContent = isCollapsed ? '\u25B6' : '\u25C0';
+    btn.style.left = isCollapsed ? '0px' : '300px';
+}
+
+// ── MANAGER NAME ──
+function getManagerName() {
+    return localStorage.getItem('esco_manager_name') || '';
+}
+
+function setManagerName(name) {
+    localStorage.setItem('esco_manager_name', name);
+    updateAvatarUI();
+}
+
+function updateAvatarUI() {
+    const name = getManagerName();
+    const avatar = document.getElementById('userAvatar');
+    if (avatar && name) {
+        const parts = name.trim().split(/\s+/);
+        avatar.textContent = parts.map(p => p[0]).join('').substring(0, 2).toUpperCase();
+        avatar.title = name;
+    }
+}
+
+function promptManagerName() {
+    const current = getManagerName();
+    const name = prompt('Введіть ваше ім\'я (менеджер):', current);
+    if (name !== null && name.trim()) {
+        setManagerName(name.trim());
+    }
+}
+
+// Init avatar on load
+document.addEventListener('DOMContentLoaded', function() { updateAvatarUI(); });
+
+// ── SILENT SYNC ──
+async function silentSync() {
+    showLoader('Синхронізація...');
+    await reloadData();
+    showToast('Дані оновлено');
+}
+
+// ── BULK ACTIONS ──
+function getSelectedIds() {
+    return Array.from(document.querySelectorAll('.card-checkbox:checked')).map(cb => cb.value);
+}
+
+function updateBulkToolbar() {
+    const selected = getSelectedIds();
+    const toolbar = document.getElementById('bulkToolbar');
+    if (selected.length > 0) {
+        toolbar.classList.add('show');
+        document.getElementById('bulkCount').textContent = selected.length + ' обрано';
+    } else {
+        toolbar.classList.remove('show');
+    }
+}
+
+function toggleSelectAll() {
+    const checkboxes = document.querySelectorAll('.card-checkbox');
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    checkboxes.forEach(cb => cb.checked = !allChecked);
+    updateBulkToolbar();
+}
+
+function clearSelection() {
+    document.querySelectorAll('.card-checkbox').forEach(cb => cb.checked = false);
+    updateBulkToolbar();
+}
+
+async function bulkRouteAssign() {
+    const ids = getSelectedIds();
+    if (ids.length === 0) return;
+    // Use same route modal but for bulk
+    routeTargetPkgId = ids[0]; // Will handle bulk in selectRoute
+    openRouteModal(ids[0]);
+}
+
+async function bulkArchive() {
+    const ids = getSelectedIds();
+    if (ids.length === 0) return;
+    if (!confirm('Архівувати ' + ids.length + ' посилок?')) return;
+    showLoader('Архівуємо...');
+    for (const id of ids) {
+        await apiPost('updateField', { pkg_id: id, col: 'Статус CRM', value: 'Архів' });
+        const p = allData.find(x => x['PKG_ID'] === id);
+        if (p) p['Статус CRM'] = 'Архів';
+    }
+    hideLoader();
+    clearSelection();
+    applyFilters();
+    showToast(ids.length + ' посилок архівовано');
+}
+
+// Add checkbox event delegation
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('card-checkbox')) {
+        updateBulkToolbar();
+    }
+});
 </script>
 </body>
 </html>
