@@ -233,6 +233,20 @@
         .detail-inline-edit { width: 100%; border: 1px solid var(--primary); border-radius: 4px; padding: 2px 4px; font-size: 12px; font-weight: 600; font-family: inherit; outline: none; background: white; }
         select.detail-inline-edit { padding: 3px 4px; cursor: pointer; appearance: auto; }
 
+        /* PAYMENTS TAB */
+        .payments-loading { text-align: center; padding: 24px; color: var(--text-secondary); font-size: 12px; }
+        .payments-loading .pay-spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 6px; }
+        .payments-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .payments-table th { text-align: left; padding: 6px 8px; background: #f1f5f9; border-bottom: 2px solid var(--border); font-size: 10px; text-transform: uppercase; color: var(--text-secondary); font-weight: 700; white-space: nowrap; }
+        .payments-table td { padding: 6px 8px; border-bottom: 1px solid #f1f5f9; }
+        .payments-table tr:hover td { background: #f8fafc; }
+        .payments-summary { display: flex; gap: 16px; padding: 10px 12px; background: #f0fdf4; border-radius: 8px; margin-top: 10px; font-size: 12px; font-weight: 600; flex-wrap: wrap; }
+        .payments-summary .pay-sum-item { display: flex; align-items: center; gap: 4px; }
+        .payments-summary .pay-sum-label { color: var(--text-secondary); font-weight: 500; }
+        .payments-summary .pay-sum-value { color: var(--success); font-weight: 800; }
+        .payments-summary .pay-sum-debt { color: var(--danger); font-weight: 800; }
+        .payments-empty { text-align: center; padding: 24px; color: var(--text-secondary); font-size: 12px; }
+
         /* === ПАНЕЛЬ ДІЙ ЛІДА: 4 кнопки в ряд (Дзвінок, Писати, Редагувати, Видалити) ===
            Показується при натисканні стрілочки ▼. display:none/flex для чистого show/hide */
         .card-actions { display: none; gap: 6px; padding: 0 12px; background: white; }
@@ -851,7 +865,7 @@
         </div>
         <div class="header-right">
             <span class="sync-indicator" id="syncIndicator">🔄 —</span>
-            <div class="user-avatar">OP</div>
+            <div class="user-avatar" onclick="promptManagerName()" title="Натисніть щоб змінити ім'я">OP</div>
         </div>
     </div>
 </header>
@@ -1471,6 +1485,7 @@ const DEFAULT_OSNOVNE_FIELDS = ['name','phone','phoneReg','direction','date','se
 const OTHER_SECTIONS = [
     { key:'route', title:'🗺️ Маршрут', fields:['from','to','timing','vehicle','seatInCar','calId'] },
     { key:'finance', title:'💰 Фінанси', fields:['price','currency','deposit','currencyDeposit','weight','weightPrice','currencyWeight','debt'] },
+    { key:'payments', title:'💳 Платежі', fields:[], readonly:true, async:true },
     { key:'statuses', title:'📊 Статуси', fields:['payStatus','leadStatus','crmStatus','tag'] },
     { key:'notes', title:'📝 Примітки', fields:['note','noteSms'] },
     { key:'system', title:'🔧 Системні', fields:['pax_id','smartId','dateCreated','sourceSheet','cliId','bookingId'], readonly:true }
@@ -1530,6 +1545,32 @@ let tripCalMonth = new Date();
 let tripSelectedDates = [];
 let vehicleBuilderCount = 0;
 let editingTripCalId = null;
+let paymentsCache = {}; // Кеш платежів: { PAX_ID: [...] }
+
+// Ім'я менеджера — зберігається в localStorage
+function getManagerName() {
+    return localStorage.getItem('esco_manager_name') || '';
+}
+function setManagerName(name) {
+    localStorage.setItem('esco_manager_name', name);
+    updateAvatarUI();
+}
+function updateAvatarUI() {
+    const name = getManagerName();
+    const avatar = document.querySelector('.user-avatar');
+    if (avatar && name) {
+        const parts = name.trim().split(/\s+/);
+        avatar.textContent = parts.map(p => p[0]).join('').substring(0, 2).toUpperCase();
+        avatar.title = name;
+    }
+}
+function promptManagerName() {
+    const current = getManagerName();
+    const name = prompt('Введіть ваше ім\'я (менеджер):', current);
+    if (name !== null && name.trim()) {
+        setManagerName(name.trim());
+    }
+}
 
 // ================================================================
 // API
@@ -1557,6 +1598,12 @@ async function apiPost(action, data) {
 // INIT
 // ================================================================
 document.addEventListener('DOMContentLoaded', () => {
+    // Запит імені менеджера при першому відкритті
+    if (!getManagerName()) {
+        promptManagerName();
+    }
+    updateAvatarUI();
+
     showLoader('Завантаження...');
     Promise.all([
         apiPost('getAll', { sheet: 'all' }),
@@ -2721,8 +2768,9 @@ function renderDetails(p) {
     // Tabs row (horizontal)
     let tabsHtml = '<div class="detail-accordion-tabs">';
     sections.forEach((section, i) => {
+        const countLabel = section.async ? '' : `<span class="tab-count">${section.fields.length}</span>`;
         tabsHtml += `<div class="detail-tab ${i===0?'active':''}" onclick="event.stopPropagation(); switchDetailTab('${paxId}','${section.key}',this)" data-section="${section.key}">
-            ${section.title} <span class="tab-count">${section.fields.length}</span>
+            ${section.title} ${countLabel}
         </div>`;
     });
     tabsHtml += '</div>';
@@ -2731,7 +2779,7 @@ function renderDetails(p) {
     let panelsHtml = '';
     sections.forEach((section, i) => {
         const panelId = `panel-${paxId}-${section.key}`;
-        panelsHtml += `<div class="detail-tab-panel ${i===0?'active':''}" id="${panelId}" data-section-key="${section.key}" data-pax-id="${paxId}" data-readonly="${section.readonly||false}">
+        panelsHtml += `<div class="detail-tab-panel ${i===0?'active':''}" id="${panelId}" data-section-key="${section.key}" data-pax-id="${paxId}" data-readonly="${section.readonly||false}" data-async="${section.async||false}">
             ${i === 0 ? renderDetailFields(p, section.fields, section.readonly) : ''}
         </div>`;
     });
@@ -2762,9 +2810,92 @@ function switchDetailTab(paxId, sectionKey, tabEl) {
         const section = sections.find(s => s.key === sectionKey);
         const p = passengers.find(x => x['PAX_ID'] === paxId);
         if (section && p) {
-            panel.innerHTML = renderDetailFields(p, section.fields, section.readonly);
+            if (section.async && sectionKey === 'payments') {
+                loadPaymentsTab(paxId, panel);
+            } else {
+                panel.innerHTML = renderDetailFields(p, section.fields, section.readonly);
+            }
         }
     }
+}
+
+// ================================================================
+// PAYMENTS TAB — Async loading
+// ================================================================
+async function loadPaymentsTab(paxId, panel) {
+    panel.innerHTML = '<div class="payments-loading"><span class="pay-spinner"></span> Завантаження платежів...</div>';
+
+    // Використовуємо кеш якщо є
+    if (paymentsCache[paxId]) {
+        panel.innerHTML = renderPaymentsPanel(paxId, paymentsCache[paxId]);
+        return;
+    }
+
+    const res = await apiPost('getPayments', { pax_id: paxId });
+    if (res.ok) {
+        paymentsCache[paxId] = res.data || [];
+        panel.innerHTML = renderPaymentsPanel(paxId, res.data || []);
+    } else {
+        panel.innerHTML = '<div class="payments-empty">Помилка завантаження платежів</div>';
+    }
+}
+
+function renderPaymentsPanel(paxId, payments) {
+    if (!payments || payments.length === 0) {
+        return '<div class="payments-empty">Платежів поки немає</div>';
+    }
+
+    let html = '<table class="payments-table"><thead><tr>';
+    html += '<th>Дата</th><th>Сума</th><th>Валюта</th><th>Тип</th><th>Хто вніс</th><th>Борг після</th><th>Статус</th>';
+    html += '</tr></thead><tbody>';
+
+    let totalReceived = 0;
+    let lastDebt = 0;
+    let lastCurrency = '';
+
+    payments.forEach(p => {
+        const sum = parseFloat(p['Сума']) || 0;
+        totalReceived += sum;
+        lastDebt = parseFloat(p['Борг сума']) || 0;
+        lastCurrency = p['Борг валюта'] || p['Валюта'] || '';
+
+        html += `<tr>
+            <td>${p['Дата створення'] || '—'}</td>
+            <td style="font-weight:700;color:var(--success)">${sum}</td>
+            <td>${p['Валюта'] || '—'}</td>
+            <td>${p['Тип платежу'] || '—'}</td>
+            <td>${p['Хто вніс'] || '—'}</td>
+            <td style="font-weight:700;color:${lastDebt > 0 ? 'var(--danger)' : 'var(--success)'}">${p['Борг сума']}</td>
+            <td>${p['Статус платежу'] || '—'}</td>
+        </tr>`;
+    });
+
+    html += '</tbody></table>';
+
+    // Підсумок
+    const pax = passengers.find(x => x['PAX_ID'] === paxId);
+    const currency = (pax && pax['Валюта квитка']) || lastCurrency || 'UAH';
+    const currentDebt = pax ? calcDebtFrontend(pax) : lastDebt;
+
+    html += `<div class="payments-summary">
+        <div class="pay-sum-item">
+            <span class="pay-sum-label">Загалом отримано:</span>
+            <span class="pay-sum-value">${totalReceived} ${payments[0] ? payments[0]['Валюта'] || currency : currency}</span>
+        </div>
+        <div class="pay-sum-item">
+            <span class="pay-sum-label">Поточний борг:</span>
+            <span class="${currentDebt > 0 ? 'pay-sum-debt' : 'pay-sum-value'}">${currentDebt} ${currency}</span>
+        </div>
+    </div>`;
+
+    return html;
+}
+
+function calcDebtFrontend(p) {
+    const price = parseFloat(p['Ціна квитка']) || 0;
+    const wp = parseFloat(p['Ціна багажу']) || 0;
+    const dep = parseFloat(p['Завдаток']) || 0;
+    return Math.max(0, price + wp - dep);
 }
 
 function openMap(address) {
@@ -2977,9 +3108,25 @@ async function saveInline(paxId, key, sheet, newVal) {
     if (el) el.textContent = formatFieldDisplay(key, newVal);
 
     const shName = sheet || p._sheet || '';
-    const res = await apiPost('updateField', { sheet: shName, pax_id: paxId, col: colName, value: newVal });
+    const payload = { sheet: shName, pax_id: paxId, col: colName, value: newVal };
+    // Передаємо ім'я менеджера при зміні завдатку
+    if (key === 'deposit') {
+        payload.manager = getManagerName();
+    }
+    const res = await apiPost('updateField', payload);
     if (res.ok) {
         showToast('✅ Збережено');
+        // Інвалідуємо кеш платежів при зміні фінансових полів
+        if (['deposit','price','weightPrice'].includes(key)) {
+            delete paymentsCache[paxId];
+            // Оновлюємо локальний борг та статус оплати
+            const debt = calcDebtFrontend(p);
+            p['Борг'] = debt;
+            const dep = parseFloat(p['Завдаток']) || 0;
+            if (dep === 0) p['Статус оплати'] = 'Не оплачено';
+            else if (debt > 0) p['Статус оплати'] = 'Частково';
+            else p['Статус оплати'] = 'Оплачено';
+        }
         render();
     } else {
         showToast('❌ Помилка: ' + (res.error || ''));

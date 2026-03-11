@@ -505,13 +505,38 @@ function apiUpdateField(params) {
 
   sh.getRange(found.rowNum, colIdx + 1).setValue(params.value);
 
-  // Перерахунок боргу
+  // Перерахунок боргу + автооновлення статусу оплати
   if (['Ціна квитка','Ціна багажу','Завдаток'].indexOf(params.col) !== -1) {
     var obj = rowToObj(found.headers, found.data);
     obj[params.col] = params.value;
+    var debt = calcDebt(obj);
     var debtIdx = found.headers.indexOf('Борг');
     if (debtIdx !== -1) {
-      sh.getRange(found.rowNum, debtIdx + 1).setValue(calcDebt(obj));
+      sh.getRange(found.rowNum, debtIdx + 1).setValue(debt);
+    }
+
+    // Автооновлення Статус оплати (Y)
+    var dep = parseFloat(obj['Завдаток']) || 0;
+    var price = parseFloat(obj['Ціна квитка']) || 0;
+    var newPayStatus = 'Не оплачено';
+    if (dep > 0 && debt > 0) newPayStatus = 'Частково';
+    if (dep > 0 && debt === 0) newPayStatus = 'Оплачено';
+    var payStatusIdx = found.headers.indexOf('Статус оплати');
+    if (payStatusIdx !== -1) {
+      sh.getRange(found.rowNum, payStatusIdx + 1).setValue(newPayStatus);
+    }
+
+    // Автозапис платежу в Finance_crm при зміні Завдаток (S)
+    if (params.col === 'Завдаток') {
+      var oldDep = parseFloat(found.data[found.headers.indexOf('Завдаток')]) || 0;
+      var newDep = parseFloat(params.value) || 0;
+      if (newDep !== oldDep && newDep > 0) {
+        // Зчитуємо актуальні дані рядка після оновлення
+        var updatedRow = sh.getRange(found.rowNum, 1, 1, found.headers.length).getValues()[0];
+        var paxData = rowToObj(found.headers, updatedRow);
+        paxData._sheet = shName;
+        addPayment(paxData, params.manager || '');
+      }
     }
   }
 
@@ -1826,6 +1851,104 @@ function apiDeleteLinkedSheets(params) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// 10. FINANCE — Платежі (Finance_crm_v2)
+// ══════════════════════════════════════════════════════════════
+
+var FINANCE_SHEET_NAME = 'Платежі';
+var FINANCE_COLS = [
+  'PAY_ID','Дата створення','Хто вніс','Роль',
+  'CLI_ID','PAX_ID','PKG_ID','RTE_ID','CAL_ID',
+  'Ід_смарт','Тип платежу','Сума','Валюта',
+  'Форма оплати','Статус платежу','Борг сума','Борг валюта',
+  'Дата погашення','Примітка','DATE_ARCHIVE','ARCHIVED_BY'
+];
+
+// addPayment — Додає запис платежу в Finance_crm_v2.Платежі
+// Викликається автоматично з apiUpdateField при зміні Завдаток (S)
+function addPayment(paxData, managerName) {
+  var finSS = SpreadsheetApp.openById(DB.FINANCE);
+  var finSheet = finSS.getSheetByName(FINANCE_SHEET_NAME);
+  if (!finSheet) {
+    // Створюємо аркуш якщо його ще немає
+    finSheet = finSS.insertSheet(FINANCE_SHEET_NAME);
+    finSheet.getRange(1, 1, 1, FINANCE_COLS.length).setValues([FINANCE_COLS]);
+  }
+
+  var payId = genId('PAY');
+  var deposit = parseFloat(paxData['Завдаток']) || 0;
+  var debt = calcDebt(paxData);
+
+  var payObj = {};
+  FINANCE_COLS.forEach(function(c) { payObj[c] = ''; });
+
+  payObj['PAY_ID'] = payId;
+  payObj['Дата створення'] = today();
+  payObj['Хто вніс'] = managerName || '';
+  payObj['Роль'] = 'Менеджер';
+  payObj['CLI_ID'] = paxData['CLI_ID'] || '';
+  payObj['PAX_ID'] = paxData['PAX_ID'] || '';
+  payObj['PKG_ID'] = '';
+  payObj['RTE_ID'] = paxData['RTE_ID'] || '';
+  payObj['CAL_ID'] = paxData['CAL_ID'] || '';
+  payObj['Ід_смарт'] = paxData['Ід_смарт'] || '';
+  payObj['Тип платежу'] = 'Завдаток';
+  payObj['Сума'] = deposit;
+  payObj['Валюта'] = paxData['Валюта завдатку'] || paxData['Валюта квитка'] || 'UAH';
+  payObj['Форма оплати'] = '';
+  payObj['Статус платежу'] = 'Отримано';
+  payObj['Борг сума'] = debt;
+  payObj['Борг валюта'] = paxData['Валюта квитка'] || 'UAH';
+  payObj['Дата погашення'] = '';
+  payObj['Примітка'] = '';
+  payObj['DATE_ARCHIVE'] = '';
+  payObj['ARCHIVED_BY'] = '';
+
+  var finHeaders = finSheet.getRange(1, 1, 1, finSheet.getLastColumn()).getValues()[0];
+  var row = finHeaders.map(function(h) { return payObj[h] !== undefined ? payObj[h] : ''; });
+  finSheet.appendRow(row);
+
+  return { ok: true, pay_id: payId };
+}
+
+// apiGetPayments — Отримати платежі по PAX_ID
+function apiGetPayments(params) {
+  var paxId = params.pax_id;
+  if (!paxId) return { ok: false, error: 'pax_id не вказано' };
+
+  var finSS = SpreadsheetApp.openById(DB.FINANCE);
+  var finSheet = finSS.getSheetByName(FINANCE_SHEET_NAME);
+  if (!finSheet) return { ok: true, data: [] };
+
+  var lastRow = finSheet.getLastRow();
+  if (lastRow < 2) return { ok: true, data: [] };
+
+  var headers = finSheet.getRange(1, 1, 1, finSheet.getLastColumn()).getValues()[0];
+  var data = finSheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+
+  var paxIdx = headers.indexOf('PAX_ID');
+  if (paxIdx === -1) return { ok: true, data: [] };
+
+  var results = [];
+  for (var i = 0; i < data.length; i++) {
+    if (String(data[i][paxIdx]) === String(paxId)) {
+      var obj = {};
+      for (var j = 0; j < headers.length; j++) {
+        obj[headers[j]] = data[i][j] !== undefined ? data[i][j] : '';
+      }
+      results.push(obj);
+    }
+  }
+
+  // Сортування: новіші зверху
+  results.sort(function(a, b) {
+    return String(b['Дата створення']).localeCompare(String(a['Дата створення']));
+  });
+
+  return { ok: true, data: results };
+}
+
+
+// ══════════════════════════════════════════════════════════════
 // doGet / doPost — UNIVERSAL ROUTER
 // ══════════════════════════════════════════════════════════════
 
@@ -1932,6 +2055,9 @@ function doPost(e) {
       case 'getSeating':         result = apiGetSeating(body); break;
       case 'assignSeat':         result = apiAssignSeat(body); break;
       case 'freeSeat':           result = apiFreeSeat(body); break;
+
+      // ── FINANCE ──
+      case 'getPayments':        result = apiGetPayments(body); break;
 
       default:
         result = { ok: false, error: 'Unknown action: ' + action + '. Available: getAll, getOne, getPassengersByTrip, getStats, checkDuplicates, suggestTrips, addPassenger, clonePassenger, updateField, updatePassenger, bulkUpdateField, assignTrip, unassignTrip, reassignTrip, deletePassenger, bulkDelete, archivePassenger, restorePassenger, moveDirection, getTrips, getTrip, createTrip, updateTrip, archiveTrip, deleteTrip, duplicateTrip, getRoutes, addToRoute, createRoute, deleteRoute, deleteLinkedSheets, getAutopark, getAutoSeats, getSeating, assignSeat, freeSeat' };
