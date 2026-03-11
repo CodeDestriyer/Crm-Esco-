@@ -1048,6 +1048,8 @@ function apiFindDuplicatesByRecipient(params) {
 }
 
 // Призначення маршруту + авто-генерація Внутрішнього №
+// Формат: послідовні номери — маршрут 200 → 200,201,...299,900,901,...
+//                              маршрут 500 → 500,501,...599,800,801,...
 function apiAssignRouteNumber(params) {
   var pkgId = params.pkg_id;
   var routeNum = String(params.route_number || '').trim();
@@ -1060,26 +1062,43 @@ function apiAssignRouteNumber(params) {
   var found = findRow(sh, 'PKG_ID', pkgId);
   if (!found) return { ok: false, error: 'Посилка не знайдена' };
 
-  // Генерація Внутрішнього №: МАРШРУТ-DDMMYY-NNN
-  var dateStr = Utilities.formatDate(new Date(), 'Europe/Kiev', 'ddMMyy');
+  // Визначаємо діапазони для маршруту
+  var baseNum = parseInt(routeNum);
+  var overflowStart;
+  if (baseNum === 200) overflowStart = 900;
+  else if (baseNum === 500) overflowStart = 800;
+  else overflowStart = baseNum + 100; // fallback для інших маршрутів
 
-  // Рахуємо скільки вже є в цьому маршруті на сьогодні
+  var rangeEnd = baseNum + 99; // 200→299, 500→599
+
+  // Збираємо всі існуючі внутрішні номери що належать цьому маршруту
   var info = getAllData(sh);
   var intIdx = info.headers.indexOf('Внутрішній №');
-  var prefix = routeNum + '-' + dateStr + '-';
-  var maxSeq = 0;
+  var maxNum = baseNum - 1; // щоб перший був baseNum (200 або 500)
   if (intIdx !== -1) {
     for (var i = 0; i < info.data.length; i++) {
-      var val = String(info.data[i][intIdx] || '');
-      if (val.indexOf(prefix) === 0) {
-        var seq = parseInt(val.substring(prefix.length)) || 0;
-        if (seq > maxSeq) maxSeq = seq;
+      var val = parseInt(String(info.data[i][intIdx] || ''));
+      if (isNaN(val)) continue;
+      // Перевіряємо чи номер належить цьому маршруту
+      if ((val >= baseNum && val <= rangeEnd) || (val >= overflowStart && val <= overflowStart + 99)) {
+        if (val > maxNum) maxNum = val;
       }
     }
   }
-  var nextSeq = maxSeq + 1;
-  var seqStr = ('000' + nextSeq).slice(-3);
-  var internalNumber = prefix + seqStr;
+
+  // Визначаємо наступний номер
+  var nextNum;
+  if (maxNum < baseNum) {
+    nextNum = baseNum; // перший номер в маршруті
+  } else if (maxNum < rangeEnd) {
+    nextNum = maxNum + 1; // ще є місце в основному діапазоні
+  } else if (maxNum === rangeEnd) {
+    nextNum = overflowStart; // переходимо в overflow діапазон
+  } else {
+    nextNum = maxNum + 1; // продовжуємо в overflow діапазоні
+  }
+
+  var internalNumber = String(nextNum);
 
   // Оновити поля
   var intNumIdx = found.headers.indexOf('Внутрішній №');
