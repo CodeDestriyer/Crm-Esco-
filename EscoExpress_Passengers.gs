@@ -873,7 +873,7 @@ function apiBulkDelete(params) {
   return { ok: true, deleted: deleted };
 }
 
-// archivePassenger — Перенос в архів (статус CRM = Архів)
+// archivePassenger — Фізичний перенос рядків з Passengers в Archive_crm_v3
 function apiArchivePassenger(params) {
   var paxIds = params.pax_ids || [];
   if (params.pax_id) paxIds.push(params.pax_id);
@@ -882,6 +882,19 @@ function apiArchivePassenger(params) {
   var reason = params.reason || '';
   var archivedBy = params.archived_by || 'Менеджер';
   var archived = 0;
+
+  // Відкриваємо таблицю архіву
+  var archSS = SpreadsheetApp.openById(DB.ARCHIVE);
+  var archSheet = archSS.getSheetByName('Архів') || archSS.getSheets()[0];
+  var archHeaders = archSheet.getLastColumn() > 0 ? archSheet.getRange(HEADER_ROW, 1, 1, archSheet.getLastColumn()).getValues()[0] : [];
+
+  // Якщо в архіві ще немає заголовків — створити з PAX_COLS + SOURCE_DIR
+  if (archHeaders.length === 0 || String(archHeaders[0]).trim() === '') {
+    var newHeaders = PAX_COLS.slice();
+    if (newHeaders.indexOf('SOURCE_DIR') === -1) newHeaders.push('SOURCE_DIR');
+    archSheet.getRange(1, 1, 1, newHeaders.length).setValues([newHeaders]);
+    archHeaders = newHeaders;
+  }
 
   [SHEETS.PAX_UE, SHEETS.PAX_EU].forEach(function(shName) {
     var sh = getSheet(shName);
@@ -894,51 +907,138 @@ function apiArchivePassenger(params) {
     var reasonIdx = info.headers.indexOf('ARCHIVE_REASON');
     var archiveIdIdx = info.headers.indexOf('ARCHIVE_ID');
 
+    // Збираємо рядки для видалення (з кінця!)
+    var rowsToArchive = [];
     for (var i = 0; i < info.data.length; i++) {
       if (paxIds.indexOf(String(info.data[i][idIdx])) !== -1) {
-        if (crmIdx !== -1) sh.getRange(DATA_START + i, crmIdx + 1).setValue('Архів');
-        if (dateArchIdx !== -1) sh.getRange(DATA_START + i, dateArchIdx + 1).setValue(now());
-        if (byIdx !== -1) sh.getRange(DATA_START + i, byIdx + 1).setValue(archivedBy);
-        if (reasonIdx !== -1) sh.getRange(DATA_START + i, reasonIdx + 1).setValue(reason);
-        if (archiveIdIdx !== -1) sh.getRange(DATA_START + i, archiveIdIdx + 1).setValue(genId('ARC'));
-        archived++;
+        // Оновити архівні поля в даних
+        var rowData = info.data[i].slice();
+        if (crmIdx !== -1) rowData[crmIdx] = 'Архів';
+        if (dateArchIdx !== -1) rowData[dateArchIdx] = now();
+        if (byIdx !== -1) rowData[byIdx] = archivedBy;
+        if (reasonIdx !== -1) rowData[reasonIdx] = reason;
+        if (archiveIdIdx !== -1) rowData[archiveIdIdx] = genId('ARC');
+
+        rowsToArchive.push({ rowNum: DATA_START + i, data: rowData, headers: info.headers, sourceDir: shName });
       }
+    }
+
+    // Записати в архівну таблицю
+    for (var j = 0; j < rowsToArchive.length; j++) {
+      var obj = rowToObj(rowsToArchive[j].headers, rowsToArchive[j].data);
+      obj['SOURCE_DIR'] = rowsToArchive[j].sourceDir; // Запамʼятати звідки
+      var archRow = archHeaders.map(function(h) { return obj[h] !== undefined ? obj[h] : ''; });
+      archSheet.appendRow(archRow);
+      archived++;
+    }
+
+    // Видалити з основної таблиці (з кінця щоб не зсувались рядки)
+    rowsToArchive.sort(function(a, b) { return b.rowNum - a.rowNum; });
+    for (var k = 0; k < rowsToArchive.length; k++) {
+      sh.deleteRow(rowsToArchive[k].rowNum);
     }
   });
 
   return { ok: true, archived: archived };
 }
 
-// restorePassenger — Відновити з архіву
+// restorePassenger — Фізичний перенос рядків з Archive_crm_v3 назад в Passengers
 function apiRestorePassenger(params) {
   var paxIds = params.pax_ids || [];
   if (params.pax_id) paxIds.push(params.pax_id);
   if (paxIds.length === 0) return { ok: false, error: 'pax_ids не вказано' };
 
+  var archSS = SpreadsheetApp.openById(DB.ARCHIVE);
+  var archSheet = archSS.getSheetByName('Архів') || archSS.getSheets()[0];
+  var archInfo = getAllData(archSheet);
+  var archIdIdx = archInfo.headers.indexOf('PAX_ID');
+  var archCrmIdx = archInfo.headers.indexOf('Статус CRM');
+  var archDateIdx = archInfo.headers.indexOf('DATE_ARCHIVE');
+  var archByIdx = archInfo.headers.indexOf('ARCHIVED_BY');
+  var archReasonIdx = archInfo.headers.indexOf('ARCHIVE_REASON');
+  var archSourceIdx = archInfo.headers.indexOf('SOURCE_DIR');
+
   var restored = 0;
+  var rowsToDelete = [];
 
-  [SHEETS.PAX_UE, SHEETS.PAX_EU].forEach(function(shName) {
-    var sh = getSheet(shName);
-    if (!sh) return;
-    var info = getAllData(sh);
-    var idIdx = info.headers.indexOf('PAX_ID');
-    var crmIdx = info.headers.indexOf('Статус CRM');
-    var dateArchIdx = info.headers.indexOf('DATE_ARCHIVE');
-    var byIdx = info.headers.indexOf('ARCHIVED_BY');
-    var reasonIdx = info.headers.indexOf('ARCHIVE_REASON');
+  for (var i = 0; i < archInfo.data.length; i++) {
+    if (paxIds.indexOf(String(archInfo.data[i][archIdIdx])) !== -1) {
+      var obj = rowToObj(archInfo.headers, archInfo.data[i]);
 
-    for (var i = 0; i < info.data.length; i++) {
-      if (paxIds.indexOf(String(info.data[i][idIdx])) !== -1) {
-        if (crmIdx !== -1) sh.getRange(DATA_START + i, crmIdx + 1).setValue('Активний');
-        if (dateArchIdx !== -1) sh.getRange(DATA_START + i, dateArchIdx + 1).setValue('');
-        if (byIdx !== -1) sh.getRange(DATA_START + i, byIdx + 1).setValue('');
-        if (reasonIdx !== -1) sh.getRange(DATA_START + i, reasonIdx + 1).setValue('');
-        restored++;
+      // Визначити куди повертати
+      var targetShName = obj['SOURCE_DIR'] || SHEETS.PAX_UE;
+      if (targetShName !== SHEETS.PAX_UE && targetShName !== SHEETS.PAX_EU) {
+        // Fallback по напряму
+        var dir = obj['Напрям'] || '';
+        targetShName = (dir.indexOf('eu-ua') !== -1 || dir.indexOf('EU→UA') !== -1) ? SHEETS.PAX_EU : SHEETS.PAX_UE;
       }
+
+      var targetSh = getSheet(targetShName);
+      if (!targetSh) continue;
+
+      // Очистити архівні поля
+      obj['Статус CRM'] = 'Активний';
+      obj['DATE_ARCHIVE'] = '';
+      obj['ARCHIVED_BY'] = '';
+      obj['ARCHIVE_REASON'] = '';
+
+      // Записати в основну таблицю
+      var targetHeaders = getHeaders(targetSh);
+      var newRow = targetHeaders.map(function(h) { return obj[h] !== undefined ? obj[h] : ''; });
+      targetSh.appendRow(newRow);
+
+      rowsToDelete.push(DATA_START + i);
+      restored++;
     }
-  });
+  }
+
+  // Видалити з архівної таблиці (з кінця)
+  rowsToDelete.sort(function(a, b) { return b - a; });
+  for (var r = 0; r < rowsToDelete.length; r++) {
+    archSheet.deleteRow(rowsToDelete[r]);
+  }
 
   return { ok: true, restored: restored };
+}
+
+// getArchive — Отримати всі записи з архіву
+function apiGetArchive(params) {
+  var archSS = SpreadsheetApp.openById(DB.ARCHIVE);
+  var archSheet = archSS.getSheetByName('Архів') || archSS.getSheets()[0];
+  var info = getAllData(archSheet);
+  var rows = [];
+  for (var i = 0; i < info.data.length; i++) {
+    rows.push(rowToObj(info.headers, info.data[i]));
+  }
+  return { ok: true, rows: rows, total: rows.length };
+}
+
+// deleteFromArchive — Повне видалення з архівної таблиці
+function apiDeleteFromArchive(params) {
+  var paxIds = params.pax_ids || [];
+  if (params.pax_id) paxIds.push(params.pax_id);
+  if (paxIds.length === 0) return { ok: false, error: 'pax_ids не вказано' };
+
+  var archSS = SpreadsheetApp.openById(DB.ARCHIVE);
+  var archSheet = archSS.getSheetByName('Архів') || archSS.getSheets()[0];
+  var info = getAllData(archSheet);
+  var idIdx = info.headers.indexOf('PAX_ID');
+  var deleted = 0;
+
+  var rowsToDelete = [];
+  for (var i = 0; i < info.data.length; i++) {
+    if (paxIds.indexOf(String(info.data[i][idIdx])) !== -1) {
+      rowsToDelete.push(DATA_START + i);
+      deleted++;
+    }
+  }
+
+  rowsToDelete.sort(function(a, b) { return b - a; });
+  for (var r = 0; r < rowsToDelete.length; r++) {
+    archSheet.deleteRow(rowsToDelete[r]);
+  }
+
+  return { ok: true, deleted: deleted };
 }
 
 // moveDirection — Перенос пасажира між аркушами UE ↔ EU
@@ -1712,6 +1812,8 @@ function doPost(e) {
       case 'bulkDelete':         result = apiBulkDelete(body); break;
       case 'archivePassenger':   result = apiArchivePassenger(body); break;
       case 'restorePassenger':   result = apiRestorePassenger(body); break;
+      case 'getArchive':         result = apiGetArchive(body); break;
+      case 'deleteFromArchive':  result = apiDeleteFromArchive(body); break;
       case 'moveDirection':      result = apiMoveDirection(body); break;
 
       // ── TRIPS ──

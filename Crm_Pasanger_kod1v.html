@@ -1561,11 +1561,13 @@ document.addEventListener('DOMContentLoaded', () => {
     showLoader('Завантаження...');
     Promise.all([
         apiPost('getAll', { sheet: 'all' }),
-        apiPost('getTrips', { filter: {} })
-    ]).then(([paxRes, tripRes]) => {
+        apiPost('getTrips', { filter: {} }),
+        apiPost('getArchive', {})
+    ]).then(([paxRes, tripRes, archRes]) => {
         hideLoader();
         if (paxRes.ok) passengers = paxRes.data;
         if (tripRes.ok) trips = tripRes.data;
+        if (archRes.ok) archivedPassengers = archRes.rows || [];
         updateAllCounts();
         updateTripFilterDropdown();
         updateTripAutoFilterDropdown();
@@ -2381,7 +2383,6 @@ function updateNavActive(tab) {
 // ================================================================
 function updateAllCounts() {
     const allPax = passengers.filter(p => (p['Статус CRM'] || 'Активний') !== 'Архів');
-    const archivedPax = passengers.filter(p => (p['Статус CRM'] || '') === 'Архів');
     const uaeu = allPax.filter(p => isDir(p, 'ua-eu'));
     const euua = allPax.filter(p => isDir(p, 'eu-ua'));
 
@@ -2389,7 +2390,7 @@ function updateAllCounts() {
     setCount('pcCountUaEu', uaeu.length);
     setCount('pcCountEuUa', euua.length);
     setCount('pcCountTrips', trips.length);
-    setCount('pcCountArchive', archivedPax.length);
+    setCount('pcCountArchive', archivedPassengers.length);
     setCount('mobileCountAll', allPax.length);
     setCount('mobileCountUaEu', uaeu.length);
     setCount('mobileCountEuUa', euua.length);
@@ -5465,6 +5466,20 @@ async function reorderRouteAfterOptimize() {
 // ARCHIVE VIEW & FUNCTIONS
 // ================================================================
 let archiveSelectedIds = new Set();
+let archivedPassengers = []; // Окремий масив — дані з Archive_crm_v3
+
+async function loadArchive() {
+    try {
+        const res = await apiPost('getArchive', {});
+        if (res.ok) {
+            archivedPassengers = res.rows || [];
+            setCount('pcCountArchive', archivedPassengers.length);
+            if (currentView === 'archive') renderArchive();
+        }
+    } catch (e) {
+        console.error('loadArchive error:', e);
+    }
+}
 
 function showArchiveView() {
     currentView = 'archive';
@@ -5474,13 +5489,12 @@ function showArchiveView() {
     document.getElementById('archiveView').style.display = 'block';
     updatePcSidebarActive();
     updateMobileSidebarActive();
-    renderArchive();
+    loadArchive(); // Завантажити свіжі дані з Archive_crm_v3
 }
 
 function getArchivedPassengers() {
     const search = (document.getElementById('archiveSearch')?.value || '').toLowerCase().trim();
-    return passengers.filter(p => {
-        if ((p['Статус CRM'] || '') !== 'Архів') return false;
+    return archivedPassengers.filter(p => {
         if (search) {
             const name = String(p['Піб'] || '').toLowerCase();
             const phone = String(p['Телефон пасажира'] || '');
@@ -5555,8 +5569,8 @@ function archivePax(paxId, name) {
         const res = await apiPost('archivePassenger', { pax_ids: [paxId], reason: 'Ручне архівування', archived_by: 'Менеджер' });
         hideLoader();
         if (res.ok) {
-            const p = passengers.find(x => x['PAX_ID'] === paxId);
-            if (p) p['Статус CRM'] = 'Архів';
+            // Фізично перенесено в Archive_crm_v3 — видаляємо з локального масиву
+            passengers = passengers.filter(x => x['PAX_ID'] !== paxId);
             showToast('✅ Архівовано');
             render(); updateAllCounts();
         } else {
@@ -5575,10 +5589,8 @@ function bulkArchive() {
         const res = await apiPost('archivePassenger', { pax_ids: ids, reason: 'Масове архівування', archived_by: 'Менеджер' });
         hideLoader();
         if (res.ok) {
-            ids.forEach(id => {
-                const p = passengers.find(x => x['PAX_ID'] === id);
-                if (p) p['Статус CRM'] = 'Архів';
-            });
+            // Фізично перенесено — видаляємо з локального масиву
+            passengers = passengers.filter(x => !ids.includes(x['PAX_ID']));
             showToast('✅ Архівовано ' + (res.archived || ids.length) + ' записів');
             clearSelection();
             render(); updateAllCounts();
@@ -5596,10 +5608,11 @@ function restorePax(paxId, name) {
         const res = await apiPost('restorePassenger', { pax_ids: [paxId] });
         hideLoader();
         if (res.ok) {
-            const p = passengers.find(x => x['PAX_ID'] === paxId);
-            if (p) { p['Статус CRM'] = 'Активний'; p['DATE_ARCHIVE'] = ''; p['ARCHIVED_BY'] = ''; p['ARCHIVE_REASON'] = ''; }
+            // Фізично повернено в Passengers — видаляємо з локального архіву, перезавантажуємо пасажирів
+            archivedPassengers = archivedPassengers.filter(x => x['PAX_ID'] !== paxId);
             showToast('✅ Відновлено');
             renderArchive(); updateAllCounts();
+            silentSync(); // Перезавантажити пасажирів щоб побачити відновленого
         } else {
             showToast('❌ ' + (res.error || 'Помилка'));
         }
@@ -5611,10 +5624,10 @@ function deletePaxPermanent(paxId, sheet, name) {
     showConfirm('⚠️ УВАГА! Видалити «' + name + '» НАЗАВЖДИ? Цю дію не можна скасувати!', async function(yes) {
         if (!yes) return;
         showLoader('Видалення...');
-        const res = await apiPost('deletePassenger', { sheet, pax_id: paxId });
+        const res = await apiPost('deleteFromArchive', { pax_ids: [paxId] });
         hideLoader();
         if (res.ok) {
-            passengers = passengers.filter(p => p['PAX_ID'] !== paxId);
+            archivedPassengers = archivedPassengers.filter(p => p['PAX_ID'] !== paxId);
             archiveSelectedIds.delete(paxId);
             showToast('✅ Видалено назавжди');
             renderArchive(); updateAllCounts();
@@ -5669,13 +5682,11 @@ function archiveBulkRestore() {
         const res = await apiPost('restorePassenger', { pax_ids: ids });
         hideLoader();
         if (res.ok) {
-            ids.forEach(id => {
-                const p = passengers.find(x => x['PAX_ID'] === id);
-                if (p) { p['Статус CRM'] = 'Активний'; p['DATE_ARCHIVE'] = ''; p['ARCHIVED_BY'] = ''; p['ARCHIVE_REASON'] = ''; }
-            });
+            archivedPassengers = archivedPassengers.filter(x => !ids.includes(x['PAX_ID']));
             showToast('✅ Відновлено ' + (res.restored || ids.length) + ' записів');
             clearArchiveSelection();
             renderArchive(); updateAllCounts();
+            silentSync(); // Перезавантажити пасажирів
         } else {
             showToast('❌ ' + (res.error || 'Помилка'));
         }
@@ -5689,10 +5700,10 @@ function archiveBulkDelete() {
     showConfirm('⚠️ УВАГА! Видалити ' + ids.length + ' записів НАЗАВЖДИ? Цю дію не можна скасувати!', async function(yes) {
         if (!yes) return;
         showLoader('Видалення ' + ids.length + ' записів...');
-        const res = await apiPost('bulkDelete', { pax_ids: ids });
+        const res = await apiPost('deleteFromArchive', { pax_ids: ids });
         hideLoader();
         if (res.ok) {
-            passengers = passengers.filter(p => !ids.includes(p['PAX_ID']));
+            archivedPassengers = archivedPassengers.filter(p => !ids.includes(p['PAX_ID']));
             showToast('✅ Видалено назавжди ' + (res.deleted || ids.length) + ' записів');
             clearArchiveSelection();
             renderArchive(); updateAllCounts();
@@ -5712,14 +5723,13 @@ async function archiveFromRoute(rteId, sheetName, leadName) {
         if (!yes) return;
         showLoader('Архівування...');
         try {
-            // 1. Архівувати в CRM
+            // 1. Архівувати в CRM (фізично переносить в Archive_crm_v3)
             await apiPost('archivePassenger', { pax_ids: [rteId], reason: 'Архівовано з маршруту', archived_by: 'Менеджер' });
             // 2. Видалити з маршруту
             await apiPost('deletePassenger', { sheet: sheetName, pax_id: rteId });
             hideLoader();
             showToast('✅ Архівовано і видалено з маршруту');
-            const p = passengers.find(x => x['PAX_ID'] === rteId);
-            if (p) p['Статус CRM'] = 'Архів';
+            passengers = passengers.filter(x => x['PAX_ID'] !== rteId);
             loadRoutes();
             updateAllCounts();
         } catch (e) {
@@ -5769,10 +5779,7 @@ function routeBulkArchive() {
             for (const rteId of ids) {
                 await apiPost('deletePassenger', { sheet: sheet.sheetName, pax_id: rteId });
             }
-            ids.forEach(id => {
-                const p = passengers.find(x => x['PAX_ID'] === id);
-                if (p) p['Статус CRM'] = 'Архів';
-            });
+            passengers = passengers.filter(x => !ids.includes(x['PAX_ID']));
             hideLoader();
             showToast('✅ Архівовано ' + ids.length + ' записів');
             clearRouteSelection();
