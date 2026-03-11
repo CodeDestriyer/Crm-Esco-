@@ -1460,6 +1460,7 @@ const LAYOUTS = {
 // STATE
 // ================================================================
 let passengers = [];
+let optimizedOrderIds = []; // Збережений порядок після оптимізації (масив PAX_ID)
 let trips = [];
 let routes = [];
 let allRouteSheets = []; // Всі аркуші (включно з Відправка_, Витрати_, Шаблони)
@@ -1542,7 +1543,10 @@ function silentSync() {
         apiPost('getTrips', { filter: {} }),
         apiPost('getRoutes', {})
     ]).then(([paxRes, tripRes, routeRes]) => {
-        if (paxRes.ok) passengers = paxRes.data;
+        if (paxRes.ok) {
+            passengers = paxRes.data;
+            applyOptimizedOrder(); // Зберігаємо оптимізований порядок після sync
+        }
         if (tripRes.ok) trips = tripRes.data;
         if (routeRes.ok && routeRes.data) {
             allRouteSheets = routeRes.data;
@@ -4963,6 +4967,23 @@ function formatDistance(meters) {
 }
 
 // MAIN OPTIMIZATION
+// Застосувати збережений оптимізований порядок до масиву passengers
+function applyOptimizedOrder() {
+    if (!optimizedOrderIds.length) return;
+    const idSet = new Set(optimizedOrderIds);
+    const byId = {};
+    for (const p of passengers) byId[p['PAX_ID']] = p;
+    const ordered = [];
+    for (const id of optimizedOrderIds) {
+        if (byId[id]) { ordered.push(byId[id]); delete byId[id]; }
+    }
+    // Решту (не оптимізовані або нові) — додати в кінець
+    for (const p of passengers) {
+        if (!idSet.has(p['PAX_ID'])) ordered.push(p);
+    }
+    passengers = ordered;
+}
+
 async function startOptimization() {
     if (!optimizePassengersList.length) return;
     if (!window.mapsApiReady || !window.mapsGeocoder) {
@@ -5091,25 +5112,9 @@ async function startOptimization() {
             }
         }
 
-        // 5b. Зберегти оптимізований порядок в масиві passengers
-        // Щоб ліди відображались у порядку оптимізації
-        const optimizedPaxIds = orderedPassengers.map(p => p.paxId);
-        const optimizedSet = new Set(optimizedPaxIds);
-        const reorderedOptimized = [];
-        const notOptimized = [];
-        for (const p of passengers) {
-            if (optimizedSet.has(p['PAX_ID'])) {
-                // буде додано в порядку оптимізації нижче
-            } else {
-                notOptimized.push(p);
-            }
-        }
-        // Додаємо оптимізованих в правильному порядку на початок
-        for (const paxId of optimizedPaxIds) {
-            const found = passengers.find(p => p['PAX_ID'] === paxId);
-            if (found) reorderedOptimized.push(found);
-        }
-        passengers = [...reorderedOptimized, ...notOptimized];
+        // 5b. Зберегти оптимізований порядок — переживає silentSync
+        optimizedOrderIds = orderedPassengers.map(p => p.paxId);
+        applyOptimizedOrder();
 
         // 6. Show result
         document.getElementById('optimizeLoadingBody').style.display = 'none';
