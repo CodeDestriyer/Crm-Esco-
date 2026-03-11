@@ -1925,24 +1925,31 @@
 
 <!-- DIRECTION POPUP -->
 <div class="direction-popup" id="directionPopup">
-    <div class="direction-option active" data-dir="all" onclick="setDirection('all')">
+    <div class="direction-option" data-dir="all" onclick="setDirection('all')">
         <span>📊</span> Всі <span class="dir-count" id="countDirAll">0</span>
     </div>
-    <div class="direction-option" data-dir="ua-eu" onclick="setDirection('ua-eu')">
-        <span>🇺🇦→🇪🇺</span> Україна-Європа <span class="dir-count" id="countDirUaEu">0</span>
+    <div class="direction-option active" data-dir="new" onclick="showNewLeads()">
+        <span>🆕</span> Нові <span class="dir-count" id="countDirNew">0</span>
     </div>
     <div class="direction-option" data-dir="eu-ua" onclick="setDirection('eu-ua')">
         <span>🇪🇺→🇺🇦</span> Європа-Україна <span class="dir-count" id="countDirEuUa">0</span>
     </div>
+    <div class="direction-option" data-dir="ua-eu" onclick="setDirection('ua-eu')">
+        <span>🇺🇦→🇪🇺</span> Україна-Європа <span class="dir-count" id="countDirUaEu">0</span>
+    </div>
 </div>
 
 <nav class="bottom-nav">
-    <button class="nav-item active" id="navPackages" onclick="toggleDirectionPopup()">
+    <button class="nav-item active" id="navPackages">
         <span>📦</span>
-        <span id="navPackagesLabel">Посилки</span>
+        <span>Посилки</span>
     </button>
     <button class="nav-item" onclick="window.location.href='index_pass_19v.html'"><span>👥</span>Пасажири</button>
-    <button class="nav-item" onclick="syncWithSheets()"><span>🔄</span>Синхр.</button>
+    <button class="nav-item" id="navDirection" onclick="toggleDirectionPopup()">
+        <span>🧭</span>
+        <span id="navDirectionLabel">Напрямок</span>
+    </button>
+    <button class="nav-item" onclick="syncWithSheets()"><span>🔄</span>Оновити</button>
     <button class="nav-item" onclick="openColumnsModal()"><span>⚙️</span>Колонки</button>
     <button class="nav-item" onclick="toggleAddPopup()"><span>➕</span>Додати</button>
 </nav>
@@ -2265,7 +2272,7 @@ document.addEventListener('DOMContentLoaded', () => {
     filters.showNewOnly = true;
     document.getElementById('pcNewLeads')?.classList.add('active');
     document.getElementById('mobileNewLeads')?.classList.add('active');
-    const navLabel = document.getElementById('navPackagesLabel');
+    const navLabel = document.getElementById('navDirectionLabel');
     if (navLabel) navLabel.textContent = '🆕 Нові';
 
     // Завантажуємо дані одразу з таблиці (єдине джерело правди)
@@ -2743,9 +2750,14 @@ function selectDate(dateStr) {
     document.getElementById('pcDirectionEuUa')?.classList.toggle('active', dir === 'eu-ua');
     document.getElementById('pcNewLeads')?.classList.remove('active');
 
-    const labels = {'all': 'Посилки', 'ua-eu': '🇺🇦→🇪🇺', 'eu-ua': '🇪🇺→🇺🇦'};
-    const navLabel = document.getElementById('navPackagesLabel');
-    if (navLabel) navLabel.textContent = labels[dir] || 'Посилки';
+    const labels = {'all': 'Всі', 'ua-eu': '🇺🇦→🇪🇺', 'eu-ua': '🇪🇺→🇺🇦'};
+    const navLabel = document.getElementById('navDirectionLabel');
+    if (navLabel) navLabel.textContent = labels[dir] || 'Напрямок';
+
+    // Оновлюємо активні стани у popup
+    document.querySelectorAll('.direction-option').forEach(el => {
+        el.classList.toggle('active', el.dataset.dir === dir);
+    });
 
     renderCalendars();
     render();
@@ -3558,9 +3570,11 @@ function updateAllCounts() {
     
     // Лічильники в popup напрямків
     const dAll = document.getElementById('countDirAll');
+    const dNew = document.getElementById('countDirNew');
     const dUaEu = document.getElementById('countDirUaEu');
     const dEuUa = document.getElementById('countDirEuUa');
     if (dAll) dAll.textContent = active.length;
+    if (dNew) dNew.textContent = newLeads.length;
     if (dUaEu) dUaEu.textContent = uaEu.length;
     if (dEuUa) dEuUa.textContent = euUa.length;
     
@@ -7031,10 +7045,12 @@ function setDirection(dir) {
     document.getElementById('pcDirectionEuUa')?.classList.toggle('active', dir === 'eu-ua');
     document.getElementById('pcNewLeads')?.classList.remove('active');
 
-    // Оновлюємо label
-    const labels = {'all': 'Посилки', 'ua-eu': '🇺🇦→🇪🇺', 'eu-ua': '🇪🇺→🇺🇦'};
-    const navLabel = document.getElementById('navPackagesLabel');
-    if (navLabel) navLabel.textContent = labels[dir] || 'Посилки';
+    // Оновлюємо label на кнопці Напрямок
+    const labels = {'all': 'Всі', 'ua-eu': '🇺🇦→🇪🇺', 'eu-ua': '🇪🇺→🇺🇦'};
+    const navLabel = document.getElementById('navDirectionLabel');
+    if (navLabel) navLabel.textContent = labels[dir] || 'Напрямок';
+    // Оновлюємо активний стан "Нові" у popup
+    document.querySelectorAll('.direction-option[data-dir="new"]').forEach(el => el.classList.remove('active'));
 
     render();
     renderCalendars();
@@ -7073,8 +7089,13 @@ function showNewLeads() {
     document.getElementById('pcDirectionEuUa')?.classList.remove('active');
     document.getElementById('pcNewLeads')?.classList.add('active');
 
-    const navLabel = document.getElementById('navPackagesLabel');
+    const navLabel = document.getElementById('navDirectionLabel');
     if (navLabel) navLabel.textContent = '🆕 Нові';
+
+    // Оновлюємо активні стани у popup
+    document.querySelectorAll('.direction-option').forEach(el => el.classList.remove('active'));
+    document.querySelector('.direction-option[data-dir="new"]')?.classList.add('active');
+    document.getElementById('directionPopup')?.classList.remove('show');
 
     render();
     updateAllCounts();
