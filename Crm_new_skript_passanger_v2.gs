@@ -823,42 +823,19 @@ function apiDeletePassenger(params) {
   return { ok: true };
 }
 
-// bulkDelete — Масове видалення
+// bulkDelete — Масове видалення (soft delete — архівує з позначкою "Видалено")
 function apiBulkDelete(params) {
   var paxIds = params.pax_ids || [];
   if (paxIds.length === 0) return { ok: false, error: 'pax_ids порожній' };
 
-  var deleted = 0;
-  var calIds = {};
-
-  // Видаляємо з кінця щоб не зсувались рядки
-  [SHEETS.PAX_UE, SHEETS.PAX_EU].forEach(function(shName) {
-    var sh = getSheet(shName);
-    if (!sh) return;
-    var info = getAllData(sh);
-    var idIdx = info.headers.indexOf('PAX_ID');
-    var calIdx = info.headers.indexOf('CAL_ID');
-
-    var rowsToDelete = [];
-    for (var i = 0; i < info.data.length; i++) {
-      if (paxIds.indexOf(String(info.data[i][idIdx])) !== -1) {
-        rowsToDelete.push(DATA_START + i);
-        var c = String(info.data[i][calIdx] || '');
-        if (c) calIds[c] = true;
-      }
-    }
-
-    // Видаляємо з кінця
-    rowsToDelete.sort(function(a,b) { return b - a; });
-    for (var r = 0; r < rowsToDelete.length; r++) {
-      sh.deleteRow(rowsToDelete[r]);
-      deleted++;
-    }
+  // Soft delete — архівуємо замість видалення
+  var result = apiArchivePassenger({
+    pax_ids: paxIds,
+    reason: 'Видалено (масове)',
+    archived_by: params.archived_by || 'Менеджер'
   });
 
-  for (var cid in calIds) { updateCalendarOccupancy(cid); }
-
-  return { ok: true, deleted: deleted };
+  return { ok: result.ok, deleted: result.archived || 0 };
 }
 
 // archivePassenger — Фізичний перенос рядків з Passengers в Archive_crm_v3
@@ -981,32 +958,9 @@ function apiGetArchive(params) {
   return { ok: true, rows: rows, total: rows.length };
 }
 
-// deleteFromArchive — Повне видалення з архівної таблиці
+// deleteFromArchive — Вимкнено (записи зберігаються в архіві назавжди)
 function apiDeleteFromArchive(params) {
-  var paxIds = params.pax_ids || [];
-  if (params.pax_id) paxIds.push(params.pax_id);
-  if (paxIds.length === 0) return { ok: false, error: 'pax_ids не вказано' };
-
-  var archSS = SpreadsheetApp.openById(ARCHIVE_SS_ID);
-  var archSheet = archSS.getSheetByName('Архів') || archSS.getSheets()[0];
-  var info = getAllData(archSheet);
-  var idIdx = info.headers.indexOf('PAX_ID');
-  var deleted = 0;
-  var rowsToDelete = [];
-
-  for (var i = 0; i < info.data.length; i++) {
-    if (paxIds.indexOf(String(info.data[i][idIdx])) !== -1) {
-      rowsToDelete.push(DATA_START + i);
-      deleted++;
-    }
-  }
-
-  rowsToDelete.sort(function(a, b) { return b - a; });
-  for (var r = 0; r < rowsToDelete.length; r++) {
-    archSheet.deleteRow(rowsToDelete[r]);
-  }
-
-  return { ok: true, deleted: deleted };
+  return { ok: false, error: 'Видалення з архіву вимкнено. Записи зберігаються в архіві назавжди.' };
 }
 
 // moveDirection — Перенос пасажира між аркушами UE ↔ EU
@@ -1052,6 +1006,9 @@ function apiGetTrips(params) {
   for (var i = 0; i < info.data.length; i++) {
     if (!info.data[i][0]) continue;
     var obj = rowToObj(info.headers, info.data[i]);
+
+    // Приховуємо видалені рейси (soft delete)
+    if (obj['Статус рейсу'] === 'Видалено') continue;
 
     if (params.filter) {
       if (params.filter.status && params.filter.status !== 'all') {
@@ -1279,7 +1236,7 @@ function apiArchiveTrip(params) {
   return { ok: true };
 }
 
-// deleteTrip
+// deleteTrip — soft delete (позначаємо "Видалено" замість фізичного видалення)
 function apiDeleteTrip(params) {
   var calSheet = getSheet(SHEETS.CALENDAR);
   if (!calSheet) return { ok: false, error: 'Аркуш не знайдений' };
@@ -1290,7 +1247,9 @@ function apiDeleteTrip(params) {
   // Знімаємо пасажирів з рейсу
   clearCalIdInPassengers(params.cal_id);
 
-  calSheet.deleteRow(found.rowNum);
+  // Soft delete — позначаємо статус "Видалено" замість видалення рядка
+  var statusIdx = found.headers.indexOf('Статус рейсу');
+  if (statusIdx !== -1) calSheet.getRange(found.rowNum, statusIdx + 1).setValue('Видалено');
 
   return { ok: true };
 }

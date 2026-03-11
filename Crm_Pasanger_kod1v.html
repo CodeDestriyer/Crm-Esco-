@@ -1042,7 +1042,7 @@
                 <button class="bulk-toolbar-btn select-all" onclick="toggleRouteSelectAll()">☑ Вибрати всі</button>
                 <button class="bulk-toolbar-btn" style="background:#f3f4f6;color:#6b7280;" onclick="routeBulkArchive()">📦 Архів</button>
                 <button class="bulk-toolbar-btn" style="background:#fee2e2;color:#dc2626;" onclick="routeBulkDeleteFromRoute()">🗑️ З маршруту</button>
-                <button class="bulk-toolbar-btn" style="background:#7f1d1d;color:white;" onclick="routeBulkDeleteFull()">❌ Видалити</button>
+                <button class="bulk-toolbar-btn" style="background:#7f1d1d;color:white;" onclick="routeBulkDeleteFull()">🗑️ Видалити</button>
                 <button class="bulk-toolbar-btn" style="background:#ede9fe;color:#7c3aed;" onclick="routeBulkTransfer()">🔄 Пересадити</button>
                 <button class="bulk-toolbar-btn cancel" onclick="clearRouteSelection()">✕ Скасувати</button>
             </div>
@@ -1067,7 +1067,6 @@
                 <span class="bulk-toolbar-count" id="archiveBulkCount">0 обрано</span>
                 <button class="bulk-toolbar-btn select-all" onclick="toggleArchiveSelectAll()">☑ Вибрати всі</button>
                 <button class="bulk-toolbar-btn" style="background:#d1fae5;color:#059669;" onclick="archiveBulkRestore()">♻️ Відновити</button>
-                <button class="bulk-toolbar-btn" style="background:#fee2e2;color:#dc2626;" onclick="archiveBulkDelete()">🗑️ Видалити назавжди</button>
                 <button class="bulk-toolbar-btn cancel" onclick="clearArchiveSelection()">✕ Скасувати</button>
             </div>
             <div id="archiveList"></div>
@@ -1977,7 +1976,7 @@ function renderRouteCard(r, idx, sheetName) {
                 <button class="btn-card-action btn-edit" onclick="event.stopPropagation(); openRouteEditModal('${rteId}','${safeSheet}')">✏️ Редагувати</button>
                 <button class="btn-card-action" style="background:#f3f4f6;color:#6b7280;" onclick="event.stopPropagation(); archiveFromRoute('${rteId}','${safeSheet}','${name.replace(/'/g,"\\'")}')">📦 Архівувати</button>
                 <button class="btn-card-action" style="background:#fee2e2;color:#dc2626;" onclick="event.stopPropagation(); deleteFromRoute('${rteId}','${safeSheet}','${name.replace(/'/g,"\\'")}')">🗑️ З маршруту</button>
-                <button class="btn-card-action" style="background:#7f1d1d;color:white;" onclick="event.stopPropagation(); deleteFromRouteFull('${rteId}','${safeSheet}','${name.replace(/'/g,"\\'")}')">❌ Видалити</button>
+                <button class="btn-card-action" style="background:#7f1d1d;color:white;" onclick="event.stopPropagation(); deleteFromRouteFull('${rteId}','${safeSheet}','${name.replace(/'/g,"\\'")}')">🗑️ Видалити</button>
                 <button class="btn-card-action" style="background:#ede9fe;color:#7c3aed;" onclick="event.stopPropagation(); transferRouteLeadModal('${rteId}','${safeSheet}')">🔄 Пересадити</button>
             </div>
         </div>
@@ -3132,7 +3131,7 @@ function onDateChanged() {
     const dirSel = document.getElementById('fDirection').value;
 
     const matching = trips.filter(t => {
-        if (t.status === 'Архів' || t.status === 'Виконано') return false;
+        if (t.status === 'Архів' || t.status === 'Виконано' || t.status === 'Видалено') return false;
         var tDate = formatTripDate(t.date);
         if (tDate !== dateFormatted) return false;
         const tDir = String(t.direction || '').toLowerCase();
@@ -3276,11 +3275,11 @@ async function deletePax(paxId, sheet, name) {
     showConfirm('Видалити пасажира «' + name + '»?', async (yes) => {
         if (!yes) return;
         showLoader('Видалення...');
-        const res = await apiPost('deletePassenger', { sheet, pax_id: paxId });
+        const res = await apiPost('archivePassenger', { pax_ids: [paxId], reason: 'Видалено', archived_by: 'Менеджер' });
         hideLoader();
         if (res.ok) {
             passengers = passengers.filter(p => p['PAX_ID'] !== paxId);
-            showToast('✅ Видалено');
+            showToast('✅ Видалено (збережено в архіві)');
             openDetailsId = null; openActionsId = null;
             render(); updateAllCounts();
         } else {
@@ -3326,7 +3325,7 @@ function cleanAutoName(name) {
 function getFilteredTrips() {
     return trips.filter(t => {
         // Hide archived/done
-        if (t.status === 'Архів' || t.status === 'Виконано') return false;
+        if (t.status === 'Архів' || t.status === 'Виконано' || t.status === 'Видалено') return false;
         // Time filter
         if (tripTimeFilter !== 'all') {
             const parts = String(t.date || '').split('.');
@@ -3389,7 +3388,7 @@ function renderTripCard(t) {
     const dirLabel = isUaEu ? 'UA → EU' : isEuUa ? 'EU → UA' : (t.direction || '↔');
     const dirCssClass = isUaEu ? 'dir-ua-eu' : isEuUa ? 'dir-eu-ua' : 'dir';
     const cardDirClass = isUaEu ? 'trip-dir-ua-eu' : isEuUa ? 'trip-dir-eu-ua' : '';
-    const statusCls = t.status === 'Повний' ? 'trip-status-full' : t.status === 'Виконано' ? 'trip-status-done' : t.status === 'Архів' ? 'trip-status-archive' : 'trip-status-open';
+    const statusCls = t.status === 'Повний' ? 'trip-status-full' : t.status === 'Виконано' ? 'trip-status-done' : (t.status === 'Архів' || t.status === 'Видалено') ? 'trip-status-archive' : 'trip-status-open';
     const safeCalId = String(t.cal_id || '').replace(/'/g, "\\'");
     const safeCity = String(t.city || '').replace(/'/g, "\\'");
     const safeDate = String(t.date || '').replace(/'/g, "\\'");
@@ -4496,7 +4495,7 @@ function getPaxDirection(paxIds) {
 function getMatchingTrips(paxIds) {
     var dirs = getPaxDirection(paxIds);
     return trips.filter(function(t) {
-        if (t.status === 'Архів' || t.status === 'Виконано') return false;
+        if (t.status === 'Архів' || t.status === 'Виконано' || t.status === 'Видалено') return false;
         var tDir = String(t.direction || '').toLowerCase().trim();
         var tIsUE = tDir.startsWith('ук') || tDir.startsWith('ua') || tDir.startsWith('україна');
         var tIsEU = tDir.startsWith('єв') || tDir.startsWith('eu') || tDir.startsWith('європа');
@@ -5553,7 +5552,6 @@ function renderArchive() {
             </div>
             <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
                 <button class="btn-card-action" style="background:#d1fae5;color:#059669;" onclick="event.stopPropagation(); restorePax('${id}','${name}')">♻️ Відновити</button>
-                <button class="btn-card-action btn-delete" onclick="event.stopPropagation(); deletePaxPermanent('${id}','${p._sheet||''}','${name}')">🗑️ Видалити назавжди</button>
             </div>
         </div>`;
     }).join('');
@@ -5739,22 +5737,19 @@ async function archiveFromRoute(rteId, sheetName, leadName) {
     });
 }
 
-// Повне видалення з маршруту + з CRM
+// Видалення з маршруту + архівування з CRM (soft delete)
 async function deleteFromRouteFull(rteId, sheetName, leadName) {
-    showConfirm('⚠️ УВАГА! Видалити «' + leadName + '» НАЗАВЖДИ з маршруту І з CRM?', async function(yes) {
+    showConfirm('Видалити «' + leadName + '» з маршруту і з CRM?', async function(yes) {
         if (!yes) return;
         showLoader('Видалення...');
         try {
             // 1. Видалити з маршруту
             await apiPost('deletePassenger', { sheet: sheetName, pax_id: rteId });
-            // 2. Видалити з CRM (знайти sheet пасажира)
-            const p = passengers.find(x => x['PAX_ID'] === rteId);
-            if (p && p._sheet) {
-                await apiPost('deletePassenger', { sheet: p._sheet, pax_id: rteId });
-            }
+            // 2. Архівувати з CRM (soft delete — зберігаємо в архіві з позначкою "Видалено")
+            await apiPost('archivePassenger', { pax_ids: [rteId], reason: 'Видалено з маршруту і CRM', archived_by: 'Менеджер' });
             passengers = passengers.filter(x => x['PAX_ID'] !== rteId);
             hideLoader();
-            showToast('✅ Видалено назавжди з маршруту і CRM');
+            showToast('✅ Видалено з маршруту (збережено в архіві)');
             loadRoutes();
             updateAllCounts();
         } catch (e) {
@@ -5796,7 +5791,7 @@ function routeBulkArchive() {
 function routeBulkDeleteFull() {
     const ids = Array.from(routeSelectedIds);
     if (!ids.length) return;
-    showConfirm('⚠️ УВАГА! Видалити ' + ids.length + ' записів НАЗАВЖДИ з маршруту І з CRM?', async function(yes) {
+    showConfirm('Видалити ' + ids.length + ' записів з маршруту і з CRM?', async function(yes) {
         if (!yes) return;
         if (activeRouteIdx === null) return;
         const sheet = routes[activeRouteIdx];
@@ -5805,14 +5800,12 @@ function routeBulkDeleteFull() {
         try {
             for (const rteId of ids) {
                 await apiPost('deletePassenger', { sheet: sheet.sheetName, pax_id: rteId });
-                const p = passengers.find(x => x['PAX_ID'] === rteId);
-                if (p && p._sheet) {
-                    await apiPost('deletePassenger', { sheet: p._sheet, pax_id: rteId });
-                }
             }
+            // Архівувати з CRM (soft delete)
+            await apiPost('archivePassenger', { pax_ids: ids, reason: 'Видалено з маршруту і CRM', archived_by: 'Менеджер' });
             passengers = passengers.filter(x => !ids.includes(x['PAX_ID']));
             hideLoader();
-            showToast('✅ Видалено назавжди ' + ids.length + ' записів');
+            showToast('✅ Видалено ' + ids.length + ' записів (збережено в архіві)');
             clearRouteSelection();
             loadRoutes();
             updateAllCounts();
