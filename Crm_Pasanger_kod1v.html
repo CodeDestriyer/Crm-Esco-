@@ -998,7 +998,10 @@
                         <h2 id="routeViewTitle" style="margin:0;font-size:20px;font-weight:800;">🚐 Маршрут</h2>
                         <div class="route-subtitle" id="routeSubtitle"></div>
                     </div>
-                    <button class="bs-btn" style="background:rgba(255,255,255,0.2);color:white;font-size:11px;padding:8px 14px;border:1px solid rgba(255,255,255,0.3);" onclick="loadRoutes()">🔄 Оновити</button>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        <button class="bs-btn" style="background:rgba(124,58,237,0.9);color:white;font-size:11px;padding:8px 14px;border:1px solid rgba(124,58,237,0.5);" onclick="optimizeRouteOrder()">⚡ Оптимізувати порядок</button>
+                        <button class="bs-btn" style="background:rgba(255,255,255,0.2);color:white;font-size:11px;padding:8px 14px;border:1px solid rgba(255,255,255,0.3);" onclick="loadRoutes()">🔄 Оновити</button>
+                    </div>
                 </div>
             </div>
             <div id="routeHeaderEmpty" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
@@ -1381,8 +1384,12 @@
             <button class="btn-cancel" onclick="closeModal('optimizeModal')">Скасувати</button>
             <button class="btn-save" onclick="startOptimization()">🚀 Оптимізувати</button>
         </div>
-        <div class="modal-footer" id="optimizeResultFooter" style="display:none">
+        <div class="modal-footer" id="optimizeResultFooter" style="display:none;flex-wrap:wrap;gap:8px;">
             <button class="btn-cancel" onclick="closeModal('optimizeModal')">Закрити</button>
+            <div style="position:relative;display:inline-block;" id="optRouteSelectWrap">
+                <button class="btn-save" style="background:var(--purple);" onclick="toggleOptRouteDropdown()">🗺️ В маршрут</button>
+                <div id="optRouteDropdown" style="display:none;position:absolute;bottom:100%;left:0;min-width:260px;background:white;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.15);padding:6px;margin-bottom:6px;max-height:250px;overflow-y:auto;z-index:999;"></div>
+            </div>
         </div>
     </div>
 </div>
@@ -4226,7 +4233,9 @@ async function assignToRoute(routeIdx) {
         if (res.ok) {
             showToast('✅ ' + leadsData.length + ' лід(ів) перенесено в ' + sheetName.replace('Маршрут_', ''));
             clearSelection();
-            loadRoutes(); // Оновити маршрути
+            await loadRoutes(); // Оновити маршрути
+            // Авто-оптимізація: запропонувати оптимізувати порядок
+            autoOptimizeRoutePrompt(routeIdx, sheetName);
         } else {
             showToast('❌ ' + (res.error || 'Помилка переносу'));
         }
@@ -4752,12 +4761,14 @@ function _optSleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 function runOptimization() {
     const filtered = getFilteredPassengers();
     if (!filtered.length) return showToast('Немає заявок для оптимізації');
+    window._optimizeRouteContext = null;
     openOptimizeModal(filtered);
 }
 
 function bulkOptimize() {
     const selected = [...selectedIds].map(id => passengers.find(p => p['PAX_ID'] === id)).filter(Boolean);
     if (!selected.length) return showToast('Оберіть пасажирів');
+    window._optimizeRouteContext = null;
     openOptimizeModal(selected);
 }
 
@@ -5114,6 +5125,7 @@ async function startOptimization() {
 
         // 5b. Зберегти оптимізований порядок — переживає silentSync
         optimizedOrderIds = orderedPassengers.map(p => p.paxId);
+        lastOptimizedPassengers = orderedPassengers;
         applyOptimizedOrder();
 
         // 6. Show result
@@ -5204,6 +5216,200 @@ function showOptimizationResult(data) {
     html += '</div>';
 
     document.getElementById('optimizeResultBody').innerHTML = html;
+
+    // Якщо оптимізуємо маршрут — показати кнопку "Зберегти порядок"
+    const routeWrap = document.getElementById('optRouteSelectWrap');
+    if (window._optimizeRouteContext) {
+        routeWrap.innerHTML = '<button class="btn-save" style="background:var(--purple);" onclick="reorderRouteAfterOptimize()">💾 Зберегти порядок в маршруті</button>';
+    } else {
+        routeWrap.innerHTML = '<button class="btn-save" style="background:var(--purple);" onclick="toggleOptRouteDropdown()">🗺️ В маршрут</button>'
+            + '<div id="optRouteDropdown" style="display:none;position:absolute;bottom:100%;left:0;min-width:260px;background:white;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.15);padding:6px;margin-bottom:6px;max-height:250px;overflow-y:auto;z-index:999;"></div>';
+    }
+}
+
+// ================================================================
+// "В МАРШРУТ" з результатів оптимізації
+// ================================================================
+let lastOptimizedPassengers = []; // Зберігаємо останніх оптимізованих для переносу
+
+function toggleOptRouteDropdown() {
+    const dd = document.getElementById('optRouteDropdown');
+    if (dd.style.display === 'block') { dd.style.display = 'none'; return; }
+    if (routes.length === 0) {
+        dd.innerHTML = '<div style="padding:14px;text-align:center;color:var(--text-secondary);font-size:12px;">Немає доступних маршрутів</div>';
+    } else {
+        dd.innerHTML = routes.map((sheet, idx) => {
+            const name = (sheet.sheetName || '').replace('Маршрут_', '');
+            const rows = sheet.rows || [];
+            const pax = rows.filter(r => (r['Тип запису'] || '').includes('Пасажир')).length;
+            return '<button onclick="saveOptimizedToRoute(' + idx + ')" style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:10px 12px;border:none;background:white;cursor:pointer;border-radius:6px;font-size:12px;font-family:inherit;transition:background 0.15s;" onmouseover="this.style.background=\'#f0f4f8\'" onmouseout="this.style.background=\'white\'">'
+                + '<span style="font-weight:700;">🗺️ ' + name + '</span>'
+                + '<span style="color:var(--text-secondary);font-size:11px;">👤' + pax + '</span>'
+                + '</button>';
+        }).join('');
+    }
+    dd.style.display = 'block';
+    // Закрити по кліку поза
+    setTimeout(() => {
+        document.addEventListener('click', function closeOptDD(e) {
+            if (!document.getElementById('optRouteSelectWrap')?.contains(e.target)) {
+                dd.style.display = 'none';
+                document.removeEventListener('click', closeOptDD);
+            }
+        });
+    }, 10);
+}
+
+async function saveOptimizedToRoute(routeIdx) {
+    const sheet = routes[routeIdx];
+    if (!sheet) return;
+    document.getElementById('optRouteDropdown').style.display = 'none';
+
+    // Використовуємо збережений оптимізований порядок
+    const paxIds = optimizedOrderIds.length ? optimizedOrderIds : lastOptimizedPassengers.map(p => p.paxId);
+    if (!paxIds.length) return showToast('Немає даних для переносу');
+
+    const leadsData = paxIds.map(id => {
+        const p = passengers.find(x => x['PAX_ID'] === id);
+        if (!p) return null;
+        return {
+            'RTE_ID': p['PAX_ID'],
+            'Тип запису': 'Пасажир',
+            'Піб пасажира': p['Піб'] || '',
+            'Телефон пасажира': p['Телефон пасажира'] || '',
+            'Телефон реєстратора': p['Телефон реєстратора'] || '',
+            'Дата рейсу': p['Дата виїзду'] || '',
+            'Напрям': p['Напрям'] || '',
+            'Адреса відправки': p['Адреса відправки'] || '',
+            'Адреса прибуття': p['Адреса прибуття'] || '',
+            'Номер авто': p['Номер авто'] || '',
+            'Місце в авто': p['Місце в авто'] || '',
+            'Кількість місць': p['Кількість місць'] || 1,
+            'Сума': p['Ціна квитка'] || '',
+            'Валюта': p['Валюта квитка'] || '',
+            'Завдаток': p['Завдаток'] || '',
+            'Валюта завдатку': p['Валюта завдатку'] || '',
+            'Статус оплати': p['Статус оплати'] || 'Не оплачено',
+            'Статус': p['Статус ліда'] || 'Новий',
+            'Вага багажу': p['Вага багажу'] || '',
+            'Ціна багажу': p['Ціна багажу'] || '',
+            'Валюта багажу': p['Валюта багажу'] || '',
+            'Примітка': p['Примітка'] || ''
+        };
+    }).filter(Boolean);
+
+    if (!leadsData.length) return showToast('Не знайдено пасажирів');
+
+    closeModal('optimizeModal');
+    showLoader('Переносимо ' + leadsData.length + ' лід(ів) в маршрут...');
+
+    try {
+        const res = await apiPost('addToRoute', { sheetName: sheet.sheetName, leads: leadsData });
+        hideLoader();
+        if (res.ok) {
+            showToast('✅ ' + leadsData.length + ' лід(ів) перенесено в ' + sheet.sheetName.replace('Маршрут_', '') + ' (оптимізований порядок)');
+            clearSelection();
+            loadRoutes();
+        } else {
+            showToast('❌ ' + (res.error || 'Помилка переносу'));
+        }
+    } catch (e) {
+        hideLoader();
+        showToast('❌ Помилка: ' + e.message);
+    }
+}
+
+// ================================================================
+// ОПТИМІЗАЦІЯ ПОРЯДКУ В МАРШРУТІ
+// ================================================================
+async function optimizeRouteOrder() {
+    if (activeRouteIdx === null || activeRouteIdx >= routes.length) return showToast('Оберіть маршрут');
+    const sheet = routes[activeRouteIdx];
+    const rows = sheet.rows || [];
+    const paxRows = rows.filter(r => (r['Тип запису'] || '').includes('Пасажир'));
+
+    if (paxRows.length < 2) return showToast('Потрібно мінімум 2 пасажири для оптимізації');
+
+    // Конвертуємо рядки маршруту в формат для оптимізації
+    const fakePax = paxRows.map(r => ({
+        'PAX_ID': r['RTE_ID'] || '',
+        'Піб': r['Піб пасажира'] || '',
+        'Телефон пасажира': r['Телефон пасажира'] || '',
+        'Кількість місць': r['Кількість місць'] || 1,
+        'Адреса відправки': r['Адреса відправки'] || '',
+        'Адреса прибуття': r['Адреса прибуття'] || '',
+    }));
+
+    openOptimizeModal(fakePax);
+    // Зберігаємо контекст маршруту для збереження порядку після оптимізації
+    window._optimizeRouteContext = {
+        sheetName: sheet.sheetName,
+        allRows: rows,
+        paxRows: paxRows
+    };
+}
+
+// Авто-пропозиція оптимізувати порядок після додавання лідів
+function autoOptimizeRoutePrompt(routeIdx, sheetName) {
+    const idx = routes.findIndex(r => r.sheetName === sheetName);
+    if (idx === -1) return;
+    const sheet = routes[idx];
+    const paxRows = (sheet.rows || []).filter(r => (r['Тип запису'] || '').includes('Пасажир'));
+    if (paxRows.length < 2) return;
+
+    const name = sheetName.replace('Маршрут_', '');
+    showConfirm('Оптимізувати порядок пасажирів у маршруті "' + name + '"? (' + paxRows.length + ' пасажирів)', function() {
+        activeRouteIdx = idx;
+        optimizeRouteOrder();
+    });
+}
+
+// Перезаписати порядок рядків у маршруті після оптимізації
+async function reorderRouteAfterOptimize() {
+    const ctx = window._optimizeRouteContext;
+    if (!ctx || !optimizedOrderIds.length) return;
+
+    const sheetName = ctx.sheetName;
+    const paxRows = ctx.paxRows;
+    const nonPaxRows = ctx.allRows.filter(r => !(r['Тип запису'] || '').includes('Пасажир'));
+
+    // Побудувати оптимізований порядок
+    const byId = {};
+    for (const r of paxRows) byId[r['RTE_ID']] = r;
+
+    const orderedPax = [];
+    for (const id of optimizedOrderIds) {
+        if (byId[id]) orderedPax.push(byId[id]);
+    }
+    // Додати тих, хто не потрапив в оптимізацію
+    for (const r of paxRows) {
+        if (!optimizedOrderIds.includes(r['RTE_ID'])) orderedPax.push(r);
+    }
+
+    // Видаляємо всіх пасажирів і додаємо заново в правильному порядку
+    showLoader('Оновлення порядку в маршруті...');
+    try {
+        // Видалити всіх пасажирів
+        for (const r of paxRows) {
+            await apiPost('deletePassenger', { sheet: sheetName, pax_id: r['RTE_ID'] });
+        }
+
+        // Додати заново в оптимізованому порядку
+        const leadsData = orderedPax.map(r => {
+            const row = {};
+            for (const key of Object.keys(r)) row[key] = r[key];
+            return row;
+        });
+        await apiPost('addToRoute', { sheetName, leads: leadsData });
+
+        hideLoader();
+        showToast('✅ Порядок в маршруті оновлено!');
+        window._optimizeRouteContext = null;
+        loadRoutes();
+    } catch (e) {
+        hideLoader();
+        showToast('❌ Помилка: ' + e.message);
+    }
 }
 </script>
 </body>
